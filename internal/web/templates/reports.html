@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="utf-8"><title>{{.Title}} · Ledger</title></head>
+<body style="font-family:sans-serif;margin:0;">
+  {{template "nav" .}}
+  <main style="max-width:720px;margin:24px auto;padding:0 16px;">
+    <h1>Weekly reports</h1>
+    {{$reports := .Reports}}
+    {{range $r := $reports}}
+    <div style="border:1px solid #e5e7eb;border-radius:8px;padding:14px;margin-bottom:10px;display:flex;justify-content:space-between;align-items:center;">
+      <div>
+        <div style="font-weight:600;">{{$r.Period}}</div>
+        <div style="color:#6b7280;font-size:13px;">status: {{$r.Status}}</div>
+      </div>
+      <a href="/app/reports/{{$r.ID}}">Open →</a>
+    </div>
+    {{else}}
+    <p style="color:#6b7280;">No reports yet — the first one is generated at the end of the week.</p>
+    {{end}}
+  </main>
+</body>
+</html>

@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="utf-8"><title>{{.Title}} · Ledger</title></head>
+<body style="font-family:sans-serif;margin:0;">
+  {{template "nav" .}}
+  <main style="max-width:860px;margin:24px auto;padding:0 16px;">
+    <h1>Dashboard</h1>
+    <div style="display:flex;gap:16px;flex-wrap:wrap;">
+      <div style="flex:1;min-width:180px;background:#f9fafb;border-radius:8px;padding:16px;">
+        <div class="muted" style="color:#6b7280;font-size:13px;">Estimated balance</div>
+        <div style="font-size:28px;font-weight:700;">{{.Balance}} <span style="font-size:14px;color:#6b7280;">ETB</span></div>
+      </div>
+      <div style="flex:1;min-width:180px;background:#f9fafb;border-radius:8px;padding:16px;">
+        <div class="muted" style="color:#6b7280;font-size:13px;">This week's spend</div>
+        <div style="font-size:28px;font-weight:700;">{{.WeekSpend}} <span style="font-size:14px;color:#6b7280;">ETB</span></div>
+        <div style="color:#6b7280;font-size:13px;">Top: {{if .TopCategory}}{{.TopCategory}}{{else}}—{{end}}</div>
+      </div>
+      <div style="flex:1;min-width:180px;background:#eff6ff;border-radius:8px;padding:16px;">
+        <div style="color:#6b7280;font-size:13px;">Pending questions</div>
+        <div style="font-size:28px;font-weight:700;">{{.PendingCnt}}</div>
+        <a href="/app/clarifications">Review →</a>
+      </div>
+    </div>
+    <h2>This week by category</h2>
+    {{.SVGChart}}
+  </main>
+</body>
+</html>

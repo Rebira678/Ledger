@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Ledger</string>
+
+    <!-- FR-1.1 / US-6: plain-language rationale BEFORE the OS permission prompt. -->
+    <string name="rationale_title">Why Ledger needs SMS access</string>
+    <string name="rationale_body">Ledger reads incoming SMS from your bank and mobile-money providers (like CBE and Telebirr) so your spending is tracked automatically — you never have to type anything. Messages from anyone who is not a bank or telecom are ignored on your phone and never sent anywhere. Your financial messages are sent only to the Ledger service over an encrypted connection.</string>
+    <string name="rationale_button">I understand — allow SMS access</string>
+
+    <string name="permission_denied">SMS access is required for automatic tracking. You can still use statement upload on the web dashboard.</string>
+
+    <string name="status_paired">✓ Phone paired with your Ledger account</string>
+    <string name="status_not_paired">Not paired yet — log in to connect this phone</string>
+    <string name="hint_email">Email</string>
+    <string name="hint_password">Password</string>
+    <string name="button_login">Log in &amp; pair this phone</string>
+    <string name="login_failed">Login failed — check your email and password</string>
+    <string name="pair_failed">Pairing failed — please try again</string>
+    <string name="pair_ok">Phone paired. Financial SMS will now be tracked.</string>
+    <string name="network_error">Network error — check your connection</string>
+
+    <string name="allowlist_title">Financial senders we watch (tapped messages are forwarded):</string>
+    <string name="capture_log_title">Recent capture activity</string>
+</resources>

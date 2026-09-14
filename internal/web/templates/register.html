@@ -1,0 +1,16 @@
+<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="utf-8"><title>{{.Title}} · Ledger</title></head>
+<body style="font-family:sans-serif;max-width:420px;margin:64px auto;padding:0 16px;">
+  <h1>Create your Ledger account</h1>
+  {{template "error" .}}
+  <form method="post" action="/register" style="display:grid;gap:10px;">
+    <input type="email" name="email" placeholder="Email" required
+           style="padding:10px;border:1px solid #d1d5db;border-radius:6px;">
+    <input type="password" name="password" placeholder="Password (min 8 characters)" required minlength="8"
+           style="padding:10px;border:1px solid #d1d5db;border-radius:6px;">
+    <button type="submit" style="padding:10px;background:#16a34a;color:white;border:0;border-radius:6px;">Create account</button>
+  </form>
+  <p style="margin-top:16px;">Already registered? <a href="/login">Sign in</a></p>
+</body>
+</html>

@@ -1,0 +1,38 @@
+# Binaries
+/bin/
+/ledger-server
+/ledger-worker
+
+# Test & coverage artifacts
+*.out
+coverage.txt
+
+# Local env files (real secrets never get committed)
+.env
+.env.local
+
+# Go workspace noise
+vendor/
+
+# Node/JS (landing page tooling, if used)
+node_modules/
+
+# IDE
+.idea/
+.vscode/
+
+# OS
+.DS_Store
+
+# Android
+android/.gradle/
+android/build/
+android/app/build/
+android/local.properties
+*.apk
+*.keystore
+!android/app/debug.keystore
+*.aab
+
+# Extracted PDF scripts are fine to keep, but any extracted local output goes here
+/scripts/out/

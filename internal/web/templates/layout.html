@@ -1,0 +1,14 @@
+{{define "nav"}}
+<nav style="display:flex;gap:16px;padding:12px 24px;background:#111827;color:#f9fafb;">
+  <strong>Ledger</strong>
+  <a href="/app" style="color:#93c5fd;">Dashboard</a>
+  <a href="/app/transactions" style="color:#93c5fd;">Transactions</a>
+  <a href="/app/clarifications" style="color:#93c5fd;">Questions</a>
+  <a href="/app/reports" style="color:#93c5fd;">Reports</a>
+  <a href="/logout" style="color:#fca5a5;margin-left:auto;">Log out</a>
+</nav>
+{{end}}
+
+{{define "error"}}
+{{if .ErrorMsg}}<div class="error" style="background:#fef2f2;color:#b91c1c;padding:10px 14px;border-radius:6px;margin:12px 0;">{{.ErrorMsg}}</div>{{end}}
+{{end}}
