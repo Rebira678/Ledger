@@ -97,3 +97,6 @@ curl -s "$B/v1/transactions" -H "Authorization: Bearer $TOKEN" | head -c 600; ec
 
 echo
 echo "✅ Demo complete. The dashboard UI is served at $B/login (same server)."
+echo "   (Log in using email: abel@example.com / password: s3curepass!)"
+echo
+read -p "Press [Enter] to shut down the server and exit..."

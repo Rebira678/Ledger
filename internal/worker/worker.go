@@ -184,3 +184,6 @@ func domainWeekStart(t time.Time) time.Time {
 	}
 	return time.Date(t.Year(), t.Month(), t.Day()-(weekday-1), 0, 0, 0, 0, time.UTC)
 }
+
+// MondayWeekStart is the exported form used by utility scripts.
+func MondayWeekStart(t time.Time) time.Time { return domainWeekStart(t) }
