@@ -11,6 +11,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"strings"
 	"time"
 )
 
@@ -46,20 +47,22 @@ type chatRequest struct {
 
 type chatMessage struct {
 	Role    string `json:"role"`
-	Content string `json:"content"`
+	Content any    `json:"content"`
 }
 
 type chatResponse struct {
 	Choices []struct {
-		Message chatMessage `json:"message"`
+		Message struct {
+			Role    string `json:"role"`
+			Content string `json:"content"`
+		} `json:"message"`
 	} `json:"choices"`
 	Error *struct {
 		Message string `json:"message"`
 	} `json:"error,omitempty"`
 }
 
-// Chat sends a single user message with a system prompt and returns the
-// assistant's reply. Errors are wrapped with context at this boundary.
+// Chat sends a single user message with a system prompt and returns the assistant's reply.
 func (c *Client) Chat(ctx context.Context, system, user string) (string, error) {
 	if !c.Configured() {
 		return "", ErrNotConfigured
@@ -67,12 +70,70 @@ func (c *Client) Chat(ctx context.Context, system, user string) (string, error) 
 	reqBody, err := json.Marshal(chatRequest{
 		Model:       c.model,
 		Messages:    []chatMessage{{Role: "system", Content: system}, {Role: "user", Content: user}},
-		Temperature: 0.3, // grounded summaries; low creativity by design
+		Temperature: 0.3,
 		MaxTokens:   400,
 	})
 	if err != nil {
 		return "", fmt.Errorf("llm: encoding request: %w", err)
 	}
+	return c.doReq(ctx, reqBody)
+}
+
+// ReceiptData represents the extracted fields from a receipt image.
+type ReceiptData struct {
+	Merchant  string  `json:"merchant"`
+	Amount    float64 `json:"amount"`
+	Currency  string  `json:"currency"`
+	Date      string  `json:"date"`
+	Direction string  `json:"direction"`
+	Category  string  `json:"category"`
+}
+
+// ParseReceipt sends an image to the LLM to extract receipt details.
+func (c *Client) ParseReceipt(ctx context.Context, base64Image string, mimeType string) (*ReceiptData, error) {
+	if !c.Configured() {
+		return nil, ErrNotConfigured
+	}
+
+	content := []map[string]any{
+		{"type": "text", "text": "Extract the merchant name, total amount, currency (e.g. ETB, USD), date (YYYY-MM-DD), direction (must be either \"credit\" if the user received money, or \"debit\" if the user paid/sent money), and a category (choose one of: Groceries, Dining, Utilities, Transport, Income, Transfer, Other). Return ONLY a valid JSON object matching this schema: {\"merchant\": \"...\", \"amount\": 123.45, \"currency\": \"...\", \"date\": \"...\", \"direction\": \"debit\", \"category\": \"Dining\"}. No markdown formatting."},
+		{
+			"type": "image_url",
+			"image_url": map[string]string{
+				"url": fmt.Sprintf("data:%s;base64,%s", mimeType, base64Image),
+			},
+		},
+	}
+
+	reqBody, err := json.Marshal(chatRequest{
+		Model:       c.model,
+		Messages:    []chatMessage{{Role: "user", Content: content}},
+		Temperature: 0.1,
+		MaxTokens:   1000,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("llm: encoding request: %w", err)
+	}
+
+	respStr, err := c.doReq(ctx, reqBody)
+	if err != nil {
+		return nil, err
+	}
+
+	// Clean up potential markdown formatting from the response
+	respStr = strings.TrimPrefix(respStr, "```json")
+	respStr = strings.TrimPrefix(respStr, "```")
+	respStr = strings.TrimSuffix(respStr, "```")
+	respStr = strings.TrimSpace(respStr)
+
+	var data ReceiptData
+	if err := json.Unmarshal([]byte(respStr), &data); err != nil {
+		return nil, fmt.Errorf("llm: failed to decode receipt JSON (%w): raw text: %q", err, respStr)
+	}
+	return &data, nil
+}
+
+func (c *Client) doReq(ctx context.Context, reqBody []byte) (string, error) {
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost,
 		stringTrimSuffix(c.baseURL, "/")+"/chat/completions", bytes.NewReader(reqBody))
 	if err != nil {
