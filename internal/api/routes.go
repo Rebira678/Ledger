@@ -50,7 +50,7 @@ func (s *Server) Routes(tokens *auth.Tokenizer) http.Handler {
 		)
 	}
 	mux.Handle("POST /v1/ingest/sms", ingestChain(s.handleIngestSMS))
-	mux.Handle("POST /v1/ingest/statement", ingestChain(s.handleStatementUpload))
+	mux.Handle("POST /v1/ingest/statement", stdChain(s.handleStatementUpload))
 	mux.Handle("GET /v1/ingest/statement/{upload_id}", stdChain(s.handleStatementStatus))
 
 	return mux

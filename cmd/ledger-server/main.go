@@ -3,7 +3,9 @@ package main
 
 import (
 	"context"
+	"encoding/base64"
 	"errors"
+	"fmt"
 	"net/http"
 	"os"
 	"os/signal"
@@ -25,6 +27,7 @@ import (
 
 func main() {
 	if err := run(); err != nil {
+		fmt.Fprintf(os.Stderr, "startup failed: %v\n", err)
 		os.Exit(1)
 	}
 }
@@ -99,6 +102,29 @@ func run() error {
 			return false
 		}
 		return created
+	}
+	srv.ParseReceipt = func(ctx context.Context, mimeType string, imageBytes []byte) (*domain.Transaction, error) {
+		importBase64 := base64.StdEncoding.EncodeToString(imageBytes)
+		data, err := llmClient.ParseReceipt(ctx, importBase64, mimeType)
+		if err != nil {
+			return nil, err
+		}
+
+		occurredAt := time.Now()
+		if t, err := time.Parse("2006-01-02", data.Date); err == nil {
+			occurredAt = t
+		}
+
+		money, _ := domain.ParseMoney(fmt.Sprintf("%.2f", data.Amount))
+
+		return &domain.Transaction{
+			Amount:       money,
+			Currency:     data.Currency,
+			Direction:    domain.DirectionDebit, // default receipts to debit
+			Counterparty: data.Merchant,
+			Source:       domain.SourceStatement,
+			OcurredAt:    occurredAt,
+		}, nil
 	}
 
 	// API + dashboard on the same mux with shared middleware.

@@ -1,6 +1,7 @@
 package api
 
 import (
+	"context"
 	"crypto/subtle"
 	"encoding/json"
 	"errors"
@@ -34,6 +35,9 @@ type Server struct {
 	// ApplyCorrection persists a user category correction into the learning
 	// loop; returns whether a new rule was created.
 	ApplyCorrection func(r *http.Request, userID, txnID, category string) bool
+
+	// ParseReceipt extracts a transaction from an image using the LLM.
+	ParseReceipt func(ctx context.Context, mimeType string, imageBytes []byte) (*domain.Transaction, error)
 }
 
 // Config carries the handler-level configuration subset.
@@ -432,9 +436,11 @@ func (s *Server) handleStatementUpload(w http.ResponseWriter, r *http.Request) {
 		strings.HasPrefix(mimeType, "text/csv"),
 		strings.HasPrefix(mimeType, "application/csv"),
 		strings.HasSuffix(strings.ToLower(header.Filename), ".csv"),
-		strings.HasSuffix(strings.ToLower(header.Filename), ".pdf"):
+		strings.HasSuffix(strings.ToLower(header.Filename), ".pdf"),
+		strings.HasPrefix(mimeType, "image/jpeg"),
+		strings.HasPrefix(mimeType, "image/png"):
 	default:
-		httpx.Envelope(w, http.StatusUnsupportedMediaType, "UNSUPPORTED_FORMAT", "uploaded file type not supported; accepts application/pdf, text/csv", "")
+		httpx.Envelope(w, http.StatusUnsupportedMediaType, "UNSUPPORTED_FORMAT", "uploaded file type not supported; accepts pdf, csv, jpeg, png", "")
 		return
 	}
 
@@ -453,6 +459,7 @@ func (s *Server) handleStatementUpload(w http.ResponseWriter, r *http.Request) {
 		httpx.WriteError(w, httpx.MapDomainError(err))
 		return
 	}
+
 	up, err := s.Repo.Uploads.CreateUpload(r.Context(), &domain.StatementUpload{
 		ID: uploadID, UserID: userID, BankHint: bankHint, MimeType: mimeType,
 		SizeBytes: int64(n), Status: "processing",
@@ -461,6 +468,42 @@ func (s *Server) handleStatementUpload(w http.ResponseWriter, r *http.Request) {
 		httpx.WriteError(w, httpx.MapDomainError(err))
 		return
 	}
+
+	// Synchronously process image and PDF receipts
+	if s.ParseReceipt != nil && (strings.HasPrefix(mimeType, "image/") || mimeType == "application/pdf") {
+		ident, ok := IdentityFrom(r.Context())
+		txn, err := s.ParseReceipt(r.Context(), mimeType, buf[:n])
+		if err == nil && txn != nil {
+			txn.ID = domain.MustNewID("txn")
+			txn.UserID = userID
+			if ok {
+				txn.DeviceID = ident.DeviceID
+			}
+
+			if s.CategorizeAndQueue != nil {
+				s.CategorizeAndQueue(r, txn)
+			}
+			if err := s.Repo.Txns.InsertTxn(r.Context(), nil, txn); err == nil {
+				s.Repo.Uploads.SetUploadStatus(r.Context(), uploadID, "completed", "", 1, 0)
+				if s.QueueClarification != nil {
+					s.QueueClarification(r, txn)
+				}
+			} else {
+				s.Repo.Uploads.SetUploadStatus(r.Context(), uploadID, "failed", err.Error(), 0, 0)
+				httpx.Envelope(w, http.StatusUnprocessableEntity, "PARSE_ERROR", "failed to insert transaction", "")
+				return
+			}
+		} else {
+			errMsg := "parse failed"
+			if err != nil {
+				errMsg = err.Error()
+			}
+			s.Repo.Uploads.SetUploadStatus(r.Context(), uploadID, "failed", errMsg, 0, 0)
+			httpx.Envelope(w, http.StatusUnprocessableEntity, "PARSE_ERROR", "failed to parse receipt: "+errMsg, "")
+			return
+		}
+	}
+
 	writeJSON(w, http.StatusCreated, map[string]any{
 		"upload_id": up.ID, "status": up.Status,
 	})
@@ -636,6 +679,7 @@ func (s *Server) handleDashboardSummary(w http.ResponseWriter, r *http.Request) 
 		"this_week_spend":        topAmt,
 		"top_category":           topCat,
 		"pending_clarifications": len(pending),
+		"category_totals":        totals,
 	})
 }
 
