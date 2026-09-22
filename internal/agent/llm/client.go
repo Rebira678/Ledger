@@ -148,16 +148,32 @@ func (c *Client) doReq(ctx context.Context, reqBody []byte) (string, error) {
 	}
 	defer resp.Body.Close()
 
-	var parsed chatResponse
-	if err := json.NewDecoder(resp.Body).Decode(&parsed); err != nil {
-		return "", fmt.Errorf("llm: decoding response (status %d): %w", resp.StatusCode, err)
-	}
-	if resp.StatusCode != http.StatusOK || parsed.Error != nil {
-		msg := ""
-		if parsed.Error != nil {
-			msg = parsed.Error.Message
+	// Read the full body first so we can surface raw API errors (e.g. Gemini 503 arrays)
+	buf := new(bytes.Buffer)
+	_, _ = buf.ReadFrom(resp.Body)
+	bodyBytes := buf.Bytes()
+
+	if resp.StatusCode != http.StatusOK {
+		// Attempt to parse standard OpenAI error object
+		var errObj struct {
+			Error *struct {
+				Message string `json:"message"`
+			} `json:"error,omitempty"`
 		}
-		return "", fmt.Errorf("llm: provider returned status %d: %s", resp.StatusCode, msg)
+		_ = json.Unmarshal(bodyBytes, &errObj)
+		if errObj.Error != nil && errObj.Error.Message != "" {
+			return "", fmt.Errorf("llm: provider returned status %d: %s", resp.StatusCode, errObj.Error.Message)
+		}
+		// Fallback to raw body for unexpected error shapes (like arrays)
+		return "", fmt.Errorf("llm: provider returned status %d: %s", resp.StatusCode, string(bodyBytes))
+	}
+
+	var parsed chatResponse
+	if err := json.Unmarshal(bodyBytes, &parsed); err != nil {
+		return "", fmt.Errorf("llm: decoding response: %w", err)
+	}
+	if parsed.Error != nil {
+		return "", fmt.Errorf("llm: provider returned error: %s", parsed.Error.Message)
 	}
 	if len(parsed.Choices) == 0 {
 		return "", errors.New("llm: provider returned no choices")
