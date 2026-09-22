@@ -7,14 +7,14 @@ import (
 	"os/signal"
 	"syscall"
 
-	"github.com/abel-gezahegn/ledger/internal/agent"
-	"github.com/abel-gezahegn/ledger/internal/agent/llm"
-	"github.com/abel-gezahegn/ledger/internal/categorize"
-	"github.com/abel-gezahegn/ledger/internal/config"
-	"github.com/abel-gezahegn/ledger/internal/loggerx"
-	"github.com/abel-gezahegn/ledger/internal/repo"
-	"github.com/abel-gezahegn/ledger/internal/reports"
-	"github.com/abel-gezahegn/ledger/internal/worker"
+	"github.com/rebira678/ledger/internal/agent"
+	"github.com/rebira678/ledger/internal/agent/llm"
+	"github.com/rebira678/ledger/internal/categorize"
+	"github.com/rebira678/ledger/internal/config"
+	"github.com/rebira678/ledger/internal/loggerx"
+	"github.com/rebira678/ledger/internal/repo"
+	"github.com/rebira678/ledger/internal/reports"
+	"github.com/rebira678/ledger/internal/worker"
 )
 
 func main() {
