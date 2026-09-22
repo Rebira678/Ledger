@@ -1,4 +1,4 @@
-module github.com/abel-gezahegn/ledger
+module github.com/rebira678/ledger
 
 go 1.26.0
 
