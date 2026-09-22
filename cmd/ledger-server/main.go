@@ -9,20 +9,21 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
 
-	"github.com/abel-gezahegn/ledger/internal/agent"
-	"github.com/abel-gezahegn/ledger/internal/agent/llm"
-	"github.com/abel-gezahegn/ledger/internal/api"
-	"github.com/abel-gezahegn/ledger/internal/auth"
-	"github.com/abel-gezahegn/ledger/internal/categorize"
-	"github.com/abel-gezahegn/ledger/internal/config"
-	"github.com/abel-gezahegn/ledger/internal/domain"
-	"github.com/abel-gezahegn/ledger/internal/httpx"
-	"github.com/abel-gezahegn/ledger/internal/loggerx"
-	"github.com/abel-gezahegn/ledger/internal/parsers"
-	"github.com/abel-gezahegn/ledger/internal/repo"
+	"github.com/rebira678/ledger/internal/agent"
+	"github.com/rebira678/ledger/internal/agent/llm"
+	"github.com/rebira678/ledger/internal/api"
+	"github.com/rebira678/ledger/internal/auth"
+	"github.com/rebira678/ledger/internal/categorize"
+	"github.com/rebira678/ledger/internal/config"
+	"github.com/rebira678/ledger/internal/domain"
+	"github.com/rebira678/ledger/internal/httpx"
+	"github.com/rebira678/ledger/internal/loggerx"
+	"github.com/rebira678/ledger/internal/parsers"
+	"github.com/rebira678/ledger/internal/repo"
 )
 
 func main() {
@@ -114,14 +115,34 @@ func run() error {
 		if t, err := time.Parse("2006-01-02", data.Date); err == nil {
 			occurredAt = t
 		}
+		
+		fmt.Printf("DEBUG LLM PARSED: %+v\n", data)
 
 		money, _ := domain.ParseMoney(fmt.Sprintf("%.2f", data.Amount))
+		if money.Units <= 0 && money.Cents <= 0 {
+			return nil, errors.New("could not extract a valid amount greater than zero from the receipt image")
+		}
+
+		dir := domain.DirectionDebit
+		if strings.ToLower(strings.TrimSpace(data.Direction)) == "credit" {
+			dir = domain.DirectionCredit
+		}
+
+		currency := strings.TrimSpace(data.Currency)
+		if currency == "" {
+			currency = "ETB"
+		}
+
+		counterparty := strings.TrimSpace(data.Merchant)
+		if counterparty == "" {
+			counterparty = "Unknown"
+		}
 
 		return &domain.Transaction{
 			Amount:       money,
-			Currency:     data.Currency,
-			Direction:    domain.DirectionDebit, // default receipts to debit
-			Counterparty: data.Merchant,
+			Currency:     currency,
+			Direction:    dir,
+			Counterparty: counterparty,
 			Source:       domain.SourceStatement,
 			OcurredAt:    occurredAt,
 		}, nil
