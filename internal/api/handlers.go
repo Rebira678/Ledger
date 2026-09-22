@@ -5,16 +5,17 @@ import (
 	"crypto/subtle"
 	"encoding/json"
 	"errors"
+	"io"
 	"net/http"
 	"regexp"
 	"strings"
 	"time"
 
-	"github.com/abel-gezahegn/ledger/internal/auth"
-	"github.com/abel-gezahegn/ledger/internal/domain"
-	"github.com/abel-gezahegn/ledger/internal/httpx"
-	"github.com/abel-gezahegn/ledger/internal/parsers"
-	"github.com/abel-gezahegn/ledger/internal/repo"
+	"github.com/rebira678/ledger/internal/auth"
+	"github.com/rebira678/ledger/internal/domain"
+	"github.com/rebira678/ledger/internal/httpx"
+	"github.com/rebira678/ledger/internal/parsers"
+	"github.com/rebira678/ledger/internal/repo"
 )
 
 // Server wires dependencies to the v1 handlers.
@@ -444,12 +445,12 @@ func (s *Server) handleStatementUpload(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	buf := make([]byte, s.Cfg.MaxStatementBytes+1)
-	n, err := file.Read(buf)
-	if err != nil && n == 0 {
+	buf, err := io.ReadAll(file)
+	if err != nil {
 		httpx.Envelope(w, http.StatusUnprocessableEntity, "VALIDATION_ERROR", "reading uploaded file", "file")
 		return
 	}
+	n := len(buf)
 	if int64(n) > s.Cfg.MaxStatementBytes {
 		httpx.Envelope(w, http.StatusRequestEntityTooLarge, "UNSUPPORTED_FORMAT", "file exceeds size limit (10MB)", "")
 		return
@@ -490,7 +491,7 @@ func (s *Server) handleStatementUpload(w http.ResponseWriter, r *http.Request) {
 				}
 			} else {
 				s.Repo.Uploads.SetUploadStatus(r.Context(), uploadID, "failed", err.Error(), 0, 0)
-				httpx.Envelope(w, http.StatusUnprocessableEntity, "PARSE_ERROR", "failed to insert transaction", "")
+				httpx.Envelope(w, http.StatusUnprocessableEntity, "PARSE_ERROR", "failed to insert transaction: "+err.Error(), "")
 				return
 			}
 		} else {
@@ -662,12 +663,35 @@ func (s *Server) handleDashboardSummary(w http.ResponseWriter, r *http.Request) 
 		httpx.WriteError(w, httpx.MapDomainError(err))
 		return
 	}
+
+	// Previous week totals for real WOW computation.
+	prevFrom := weekStart.AddDate(0, 0, -7).Format("2006-01-02T15:04:05Z")
+	prevTotals, err := s.Repo.Reports.SumByCategoryForPeriod(ctx, userID, prevFrom, from)
+	if err != nil {
+		httpx.WriteError(w, httpx.MapDomainError(err))
+		return
+	}
+
 	topCat, topAmt := "", 0.0
+	var thisWeekTotal float64
 	for c, v := range totals {
+		thisWeekTotal += v
 		if v > topAmt {
 			topCat, topAmt = c, v
 		}
 	}
+	var lastWeekTotal float64
+	for _, v := range prevTotals {
+		lastWeekTotal += v
+	}
+
+	// Real WOW % change.
+	var wowPct *float64
+	if lastWeekTotal > 0 {
+		pct := (thisWeekTotal - lastWeekTotal) / lastWeekTotal * 100
+		wowPct = &pct
+	}
+
 	pending, err := s.Repo.Clarifs.ListPending(ctx, userID)
 	if err != nil {
 		httpx.WriteError(w, httpx.MapDomainError(err))
@@ -676,7 +700,9 @@ func (s *Server) handleDashboardSummary(w http.ResponseWriter, r *http.Request) 
 	writeJSON(w, http.StatusOK, map[string]any{
 		"estimated_balance":      bal,
 		"currency":               "ETB",
-		"this_week_spend":        topAmt,
+		"this_week_spend":        thisWeekTotal,
+		"last_week_spend":        lastWeekTotal,
+		"week_over_week_pct":     wowPct,
 		"top_category":           topCat,
 		"pending_clarifications": len(pending),
 		"category_totals":        totals,
