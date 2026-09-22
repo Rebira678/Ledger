@@ -9,9 +9,9 @@ import (
 	"log/slog"
 	"time"
 
-	"github.com/abel-gezahegn/ledger/internal/agent"
-	"github.com/abel-gezahegn/ledger/internal/agent/llm"
-	"github.com/abel-gezahegn/ledger/internal/repo"
+	"github.com/rebira678/ledger/internal/agent"
+	"github.com/rebira678/ledger/internal/agent/llm"
+	"github.com/rebira678/ledger/internal/repo"
 )
 
 // Generator produces weekly reports.

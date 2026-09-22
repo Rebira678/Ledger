@@ -11,9 +11,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/abel-gezahegn/ledger/internal/agent/llm"
-	"github.com/abel-gezahegn/ledger/internal/categorize"
-	"github.com/abel-gezahegn/ledger/internal/domain"
+	"github.com/rebira678/ledger/internal/agent/llm"
+	"github.com/rebira678/ledger/internal/categorize"
+	"github.com/rebira678/ledger/internal/domain"
 )
 
 // Stores aggregates the persistence the orchestrator needs.

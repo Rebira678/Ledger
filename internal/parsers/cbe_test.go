@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/abel-gezahegn/ledger/internal/domain"
+	"github.com/rebira678/ledger/internal/domain"
 )
 
 // NOTE (D-12): these fixtures are REPRESENTATIVE synthetic samples written from

@@ -6,7 +6,7 @@ import (
 	"errors"
 	"time"
 
-	"github.com/abel-gezahegn/ledger/internal/domain"
+	"github.com/rebira678/ledger/internal/domain"
 )
 
 // TokenRepo persists opaque refresh tokens (stored hashed).

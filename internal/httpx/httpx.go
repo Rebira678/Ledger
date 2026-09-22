@@ -14,8 +14,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/abel-gezahegn/ledger/internal/domain"
-	"github.com/abel-gezahegn/ledger/internal/loggerx"
+	"github.com/rebira678/ledger/internal/domain"
+	"github.com/rebira678/ledger/internal/loggerx"
 )
 
 // Envelope writes the API-contract error envelope.

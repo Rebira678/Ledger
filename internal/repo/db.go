@@ -14,7 +14,7 @@ import (
 	"github.com/golang-migrate/migrate/v4/source/iofs"
 	_ "github.com/jackc/pgx/v5/stdlib"
 
-	"github.com/abel-gezahegn/ledger/internal/domain"
+	"github.com/rebira678/ledger/internal/domain"
 )
 
 //go:embed migrations/*.sql

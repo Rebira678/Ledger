@@ -6,8 +6,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/abel-gezahegn/ledger/internal/domain"
-	"github.com/abel-gezahegn/ledger/internal/repo"
+	"github.com/rebira678/ledger/internal/domain"
+	"github.com/rebira678/ledger/internal/repo"
 )
 
 // TestIntegration_Ingestion_Idempotency submits the same message twice and

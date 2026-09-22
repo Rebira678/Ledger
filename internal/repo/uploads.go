@@ -3,7 +3,7 @@ package repo
 import (
 	"context"
 
-	"github.com/abel-gezahegn/ledger/internal/domain"
+	"github.com/rebira678/ledger/internal/domain"
 )
 
 // UploadRepo persists statement uploads (FR-7).

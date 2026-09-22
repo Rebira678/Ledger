@@ -5,7 +5,7 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/abel-gezahegn/ledger/internal/domain"
+	"github.com/rebira678/ledger/internal/domain"
 )
 
 // TelebirrParser parses Ethio Telecom Telebirr wallet SMS notifications.

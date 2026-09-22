@@ -14,10 +14,10 @@ import (
 	"github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/wait"
 
-	"github.com/abel-gezahegn/ledger/internal/agent"
-	"github.com/abel-gezahegn/ledger/internal/api"
-	"github.com/abel-gezahegn/ledger/internal/domain"
-	"github.com/abel-gezahegn/ledger/internal/repo"
+	"github.com/rebira678/ledger/internal/agent"
+	"github.com/rebira678/ledger/internal/api"
+	"github.com/rebira678/ledger/internal/domain"
+	"github.com/rebira678/ledger/internal/repo"
 )
 
 // containerDSN2 starts a real Postgres container (or reuses env DSN) — real

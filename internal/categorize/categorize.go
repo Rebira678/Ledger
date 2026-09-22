@@ -7,7 +7,7 @@ import (
 	"context"
 	"strings"
 
-	"github.com/abel-gezahegn/ledger/internal/domain"
+	"github.com/rebira678/ledger/internal/domain"
 )
 
 // DefaultCategory is assigned when nothing matches.

@@ -4,8 +4,8 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/abel-gezahegn/ledger/internal/auth"
-	"github.com/abel-gezahegn/ledger/internal/httpx"
+	"github.com/rebira678/ledger/internal/auth"
+	"github.com/rebira678/ledger/internal/httpx"
 )
 
 // Routes builds the full v1 mux with middleware applied per contract §1.1/§1.4.

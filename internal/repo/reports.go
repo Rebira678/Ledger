@@ -7,7 +7,7 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/abel-gezahegn/ledger/internal/domain"
+	"github.com/rebira678/ledger/internal/domain"
 )
 
 // ReportRepo persists weekly reports (FR-6).

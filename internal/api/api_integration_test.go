@@ -15,14 +15,14 @@ import (
 
 	_ "github.com/jackc/pgx/v5/stdlib"
 
-	"github.com/abel-gezahegn/ledger/internal/agent"
-	"github.com/abel-gezahegn/ledger/internal/agent/llm"
-	"github.com/abel-gezahegn/ledger/internal/api"
-	"github.com/abel-gezahegn/ledger/internal/auth"
-	"github.com/abel-gezahegn/ledger/internal/categorize"
-	"github.com/abel-gezahegn/ledger/internal/loggerx"
-	"github.com/abel-gezahegn/ledger/internal/parsers"
-	"github.com/abel-gezahegn/ledger/internal/repo"
+	"github.com/rebira678/ledger/internal/agent"
+	"github.com/rebira678/ledger/internal/agent/llm"
+	"github.com/rebira678/ledger/internal/api"
+	"github.com/rebira678/ledger/internal/auth"
+	"github.com/rebira678/ledger/internal/categorize"
+	"github.com/rebira678/ledger/internal/loggerx"
+	"github.com/rebira678/ledger/internal/parsers"
+	"github.com/rebira678/ledger/internal/repo"
 )
 
 var testDB *sql.DB

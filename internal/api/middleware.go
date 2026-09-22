@@ -6,9 +6,9 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/abel-gezahegn/ledger/internal/auth"
-	"github.com/abel-gezahegn/ledger/internal/domain"
-	"github.com/abel-gezahegn/ledger/internal/httpx"
+	"github.com/rebira678/ledger/internal/auth"
+	"github.com/rebira678/ledger/internal/domain"
+	"github.com/rebira678/ledger/internal/httpx"
 )
 
 // bearerToken extracts "Authorization: Bearer <token>".

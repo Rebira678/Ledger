@@ -8,8 +8,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/abel-gezahegn/ledger/internal/repo"
-	"github.com/abel-gezahegn/ledger/internal/reports"
+	"github.com/rebira678/ledger/internal/repo"
+	"github.com/rebira678/ledger/internal/reports"
 )
 
 // WeeklyReportWorker schedules weekly report generation.

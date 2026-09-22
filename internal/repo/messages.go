@@ -6,7 +6,7 @@ import (
 	"errors"
 	"time"
 
-	"github.com/abel-gezahegn/ledger/internal/domain"
+	"github.com/rebira678/ledger/internal/domain"
 )
 
 // MessageRepo persists raw ingested SMS messages (idempotency + reprocessing).

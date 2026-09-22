@@ -4,7 +4,7 @@ import (
 	"context"
 	"testing"
 
-	"github.com/abel-gezahegn/ledger/internal/domain"
+	"github.com/rebira678/ledger/internal/domain"
 )
 
 type fakeRules struct{ rules []*domain.CategoryRule }
