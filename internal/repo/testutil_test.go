@@ -58,26 +58,11 @@ func freshDB(t *testing.T) {
 
 func dropAllTables(t *testing.T) {
 	t.Helper()
-	rows, err := testDB.Query(`SELECT tablename FROM pg_tables WHERE schemaname='public'`)
-	if err != nil {
-		t.Fatalf("listing tables: %v", err)
-	}
-	var tables []string
-	for rows.Next() {
-		var name string
-		if err := rows.Scan(&name); err != nil {
-			t.Fatalf("scanning table: %v", err)
-		}
-		tables = append(tables, name)
-	}
-	rows.Close()
-	if err := rows.Err(); err != nil {
-		t.Fatalf("iterating tables: %v", err)
-	}
-	for _, tb := range tables {
-		if _, err := testDB.Exec(`DROP TABLE IF EXISTS ` + tb + ` CASCADE`); err != nil {
-			t.Fatalf("dropping %s: %v", tb, err)
-		}
+	if _, err := testDB.Exec(`
+		DROP SCHEMA IF EXISTS public CASCADE;
+		CREATE SCHEMA public;
+	`); err != nil {
+		t.Fatalf("failed to reset schema: %v", err)
 	}
 }
 

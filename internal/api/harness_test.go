@@ -69,23 +69,11 @@ func dropAll(t *testing.T) {
 		}
 		time.Sleep(250 * time.Millisecond)
 	}
-	rows, err := testDB.Query(`SELECT tablename FROM pg_tables WHERE schemaname='public'`)
-	if err != nil {
-		t.Fatalf("listing tables: %v", err)
-	}
-	var tables []string
-	for rows.Next() {
-		var name string
-		if err := rows.Scan(&name); err != nil {
-			t.Fatalf("scan: %v", err)
-		}
-		tables = append(tables, name)
-	}
-	rows.Close()
-	for _, tb := range tables {
-		if _, err := testDB.Exec(`DROP TABLE IF EXISTS ` + tb + ` CASCADE`); err != nil {
-			t.Fatalf("drop %s: %v", tb, err)
-		}
+	if _, err := testDB.Exec(`
+		DROP SCHEMA IF EXISTS public CASCADE;
+		CREATE SCHEMA public;
+	`); err != nil {
+		t.Fatalf("failed to reset schema: %v", err)
 	}
 }
 
