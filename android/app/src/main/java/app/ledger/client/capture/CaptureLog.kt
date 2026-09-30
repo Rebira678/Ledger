@@ -25,7 +25,7 @@ object CaptureLog {
         }
         synchronized(this) {
             val existing = prefs.getStringSet("entries", emptySet()) ?: emptySet()
-            prefs.edit().putStringSet("entries", (existing + entry).takeLast(MAX_ENTRIES).toSet()).apply()
+            prefs.edit().putStringSet("entries", (existing + entry).toList().takeLast(MAX_ENTRIES).toSet()).apply()
         }
     }
 
