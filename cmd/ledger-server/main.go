@@ -115,7 +115,7 @@ func run() error {
 		if t, err := time.Parse("2006-01-02", data.Date); err == nil {
 			occurredAt = t
 		}
-		
+
 		fmt.Printf("DEBUG LLM PARSED: %+v\n", data)
 
 		money, _ := domain.ParseMoney(fmt.Sprintf("%.2f", data.Amount))
