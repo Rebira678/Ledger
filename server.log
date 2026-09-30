@@ -1,0 +1,18 @@
+time=2026-09-18T00:43:45.725+03:00 level=INFO msg="database ready" migrations=applied
+time=2026-09-18T00:43:45.726+03:00 level=INFO msg="ledger server listening" addr=:8080 env=development
+time=2026-09-18T00:45:06.709+03:00 level=INFO msg="http request" correlation_id=181cb68fcb22dd90 method=POST path=/v1/auth/login status=200 duration=429.026796ms
+time=2026-09-18T00:45:06.759+03:00 level=INFO msg="http request" correlation_id=20abeee381476be5 method=GET path=/v1/dashboard/summary status=200 duration=13.112989ms
+time=2026-09-18T00:45:06.768+03:00 level=INFO msg="http request" correlation_id=d6ca400b9c131c0f method=GET path=/v1/dashboard/summary status=200 duration=2.329071ms
+time=2026-09-18T00:45:10.740+03:00 level=INFO msg="http request" correlation_id=d08ee051c7043903 method=GET path=/v1/agent/clarifications status=200 duration=1.700453ms
+time=2026-09-18T00:45:10.747+03:00 level=INFO msg="http request" correlation_id=3d05c7a9e1632832 method=GET path=/v1/agent/clarifications status=200 duration=1.041418ms
+time=2026-09-18T00:45:11.943+03:00 level=INFO msg="http request" correlation_id=41e41147bc93d96c method=POST path=/v1/agent/clarifications/clr_91f77627c0a3baaeb7731458d77a2dd8/respond status=200 duration=16.852075ms
+time=2026-09-18T00:45:16.419+03:00 level=INFO msg="http request" correlation_id=98584ae30bd00d94 method=POST path=/v1/agent/clarifications/clr_99314559e23b152923cb905b1d3f122b/respond status=200 duration=12.000116ms
+time=2026-09-18T00:45:18.536+03:00 level=INFO msg="http request" correlation_id=0651e70c1cf0fdb7 method=GET path=/v1/dashboard/summary status=200 duration=2.734497ms
+time=2026-09-18T00:45:18.544+03:00 level=INFO msg="http request" correlation_id=db669561a8ef70af method=GET path=/v1/dashboard/summary status=200 duration=2.244691ms
+time=2026-09-18T00:45:28.251+03:00 level=INFO msg="http request" correlation_id=cad4f432e04feff9 method=GET path=/v1/agent/clarifications status=200 duration=1.062247ms
+time=2026-09-18T00:45:28.257+03:00 level=INFO msg="http request" correlation_id=894c5eb74535c535 method=GET path=/v1/agent/clarifications status=200 duration=837.834µs
+time=2026-09-18T00:45:29.514+03:00 level=INFO msg="http request" correlation_id=059187e19c2f971c method=GET path=/v1/reports/weekly status=200 duration=4.395155ms
+time=2026-09-18T00:45:29.522+03:00 level=INFO msg="http request" correlation_id=004b69afed1aa460 method=GET path=/v1/reports/weekly status=200 duration=1.105369ms
+time=2026-09-18T00:45:30.846+03:00 level=INFO msg="http request" correlation_id=a8d840d865192966 method=GET path=/v1/transactions status=200 duration=2.215266ms
+time=2026-09-18T00:45:30.853+03:00 level=INFO msg="http request" correlation_id=a1c9df7e8851fa6d method=GET path=/v1/transactions status=200 duration=1.146697ms
+time=2026-09-18T00:46:13.629+03:00 level=INFO msg="shutting down"

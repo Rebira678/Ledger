@@ -10,6 +10,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"math/rand"
 	"net/http"
 	"strings"
 	"time"
@@ -20,18 +21,24 @@ var ErrNotConfigured = errors.New("llm: not configured (set LEDGER_LLM_API_KEY)"
 
 // Client calls an OpenAI-compatible chat-completions endpoint.
 type Client struct {
-	apiKey     string
-	baseURL    string
-	model      string
-	timeout    time.Duration
-	httpClient *http.Client
+	apiKey       string
+	baseURL      string
+	model        string
+	timeout      time.Duration
+	httpClient   *http.Client
+	visionClient *http.Client // longer timeout for image payloads
 }
 
 // New builds a Client. apiKey may be empty → ErrNotConfigured on use.
 func New(apiKey, baseURL, model string, timeout time.Duration) *Client {
+	visionTimeout := timeout * 4 // 4x base timeout for vision requests
+	if visionTimeout < 120*time.Second {
+		visionTimeout = 120 * time.Second
+	}
 	return &Client{
 		apiKey: apiKey, baseURL: baseURL, model: model, timeout: timeout,
-		httpClient: &http.Client{Timeout: timeout},
+		httpClient:   &http.Client{Timeout: timeout},
+		visionClient: &http.Client{Timeout: visionTimeout},
 	}
 }
 
@@ -115,10 +122,13 @@ func (c *Client) ParseReceipt(ctx context.Context, base64Image string, mimeType 
 		return nil, fmt.Errorf("llm: encoding request: %w", err)
 	}
 
-	respStr, err := c.doReq(ctx, reqBody)
+	respStr, err := c.doReqWithClient(ctx, reqBody, c.visionClient)
 	if err != nil {
 		return nil, err
 	}
+
+	fmt.Printf("DEBUG ParseReceipt: mimeType=%s base64len=%d\n", mimeType, len(base64Image))
+	fmt.Printf("DEBUG ParseReceipt: raw LLM response=%q\n", respStr)
 
 	// Clean up potential markdown formatting from the response
 	respStr = strings.TrimPrefix(respStr, "```json")
@@ -126,59 +136,91 @@ func (c *Client) ParseReceipt(ctx context.Context, base64Image string, mimeType 
 	respStr = strings.TrimSuffix(respStr, "```")
 	respStr = strings.TrimSpace(respStr)
 
+	fmt.Printf("DEBUG ParseReceipt: cleaned response=%q\n", respStr)
+
 	var data ReceiptData
 	if err := json.Unmarshal([]byte(respStr), &data); err != nil {
 		return nil, fmt.Errorf("llm: failed to decode receipt JSON (%w): raw text: %q", err, respStr)
 	}
+	fmt.Printf("DEBUG ParseReceipt: parsed data=%+v\n", data)
 	return &data, nil
 }
 
 func (c *Client) doReq(ctx context.Context, reqBody []byte) (string, error) {
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost,
-		stringTrimSuffix(c.baseURL, "/")+"/chat/completions", bytes.NewReader(reqBody))
-	if err != nil {
-		return "", fmt.Errorf("llm: building request: %w", err)
-	}
-	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("Authorization", "Bearer "+c.apiKey)
+	return c.doReqWithClient(ctx, reqBody, c.httpClient)
+}
 
-	resp, err := c.httpClient.Do(req)
-	if err != nil {
-		return "", fmt.Errorf("llm: calling provider: %w", err)
-	}
-	defer resp.Body.Close()
+func (c *Client) doReqWithClient(ctx context.Context, reqBody []byte, client *http.Client) (string, error) {
+	const maxRetries = 3
+	var lastErr error
 
-	// Read the full body first so we can surface raw API errors (e.g. Gemini 503 arrays)
-	buf := new(bytes.Buffer)
-	_, _ = buf.ReadFrom(resp.Body)
-	bodyBytes := buf.Bytes()
-
-	if resp.StatusCode != http.StatusOK {
-		// Attempt to parse standard OpenAI error object
-		var errObj struct {
-			Error *struct {
-				Message string `json:"message"`
-			} `json:"error,omitempty"`
+	for attempt := 0; attempt <= maxRetries; attempt++ {
+		if attempt > 0 {
+			// Exponential backoff: 5s, 15s, 30s + jitter
+			backoff := time.Duration(5<<uint(attempt-1)) * time.Second
+			jitter := time.Duration(rand.Int63n(int64(2 * time.Second)))
+			select {
+			case <-time.After(backoff + jitter):
+			case <-ctx.Done():
+				return "", ctx.Err()
+			}
+			fmt.Printf("DEBUG llm: retrying request (attempt %d/%d)\n", attempt+1, maxRetries+1)
 		}
-		_ = json.Unmarshal(bodyBytes, &errObj)
-		if errObj.Error != nil && errObj.Error.Message != "" {
-			return "", fmt.Errorf("llm: provider returned status %d: %s", resp.StatusCode, errObj.Error.Message)
+
+		req, err := http.NewRequestWithContext(ctx, http.MethodPost,
+			stringTrimSuffix(c.baseURL, "/")+"/chat/completions", bytes.NewReader(reqBody))
+		if err != nil {
+			return "", fmt.Errorf("llm: building request: %w", err)
 		}
-		// Fallback to raw body for unexpected error shapes (like arrays)
-		return "", fmt.Errorf("llm: provider returned status %d: %s", resp.StatusCode, string(bodyBytes))
+		req.Header.Set("Content-Type", "application/json")
+		req.Header.Set("Authorization", "Bearer "+c.apiKey)
+
+		resp, err := client.Do(req)
+		if err != nil {
+			lastErr = fmt.Errorf("llm: calling provider: %w", err)
+			continue // retry on network errors
+		}
+
+		// Read the full body first
+		buf := new(bytes.Buffer)
+		_, _ = buf.ReadFrom(resp.Body)
+		resp.Body.Close()
+		bodyBytes := buf.Bytes()
+
+		// Retry on 429 (rate limit) and 503 (overloaded)
+		if resp.StatusCode == 429 || resp.StatusCode == 503 {
+			lastErr = fmt.Errorf("llm: provider returned status %d (will retry)", resp.StatusCode)
+			continue
+		}
+
+		if resp.StatusCode != http.StatusOK {
+			// Attempt to parse standard OpenAI error object
+			var errObj struct {
+				Error *struct {
+					Message string `json:"message"`
+				} `json:"error,omitempty"`
+			}
+			_ = json.Unmarshal(bodyBytes, &errObj)
+			if errObj.Error != nil && errObj.Error.Message != "" {
+				return "", fmt.Errorf("llm: provider returned status %d: %s", resp.StatusCode, errObj.Error.Message)
+			}
+			return "", fmt.Errorf("llm: provider returned status %d: %s", resp.StatusCode, string(bodyBytes))
+		}
+
+		var parsed chatResponse
+		if err := json.Unmarshal(bodyBytes, &parsed); err != nil {
+			return "", fmt.Errorf("llm: decoding response: %w", err)
+		}
+		if parsed.Error != nil {
+			return "", fmt.Errorf("llm: provider returned error: %s", parsed.Error.Message)
+		}
+		if len(parsed.Choices) == 0 {
+			return "", errors.New("llm: provider returned no choices")
+		}
+		return parsed.Choices[0].Message.Content, nil
 	}
 
-	var parsed chatResponse
-	if err := json.Unmarshal(bodyBytes, &parsed); err != nil {
-		return "", fmt.Errorf("llm: decoding response: %w", err)
-	}
-	if parsed.Error != nil {
-		return "", fmt.Errorf("llm: provider returned error: %s", parsed.Error.Message)
-	}
-	if len(parsed.Choices) == 0 {
-		return "", errors.New("llm: provider returned no choices")
-	}
-	return parsed.Choices[0].Message.Content, nil
+	return "", fmt.Errorf("llm: all %d retries exhausted: %w", maxRetries+1, lastErr)
 }
 
 func stringTrimSuffix(s, suffix string) string {
