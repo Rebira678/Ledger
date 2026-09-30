@@ -5,6 +5,7 @@ import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
 import app.ledger.client.capture.CaptureLog
 import app.ledger.client.net.ApiClient
+import app.ledger.client.net.DeviceCredentials
 import app.ledger.client.net.IngestRequest
 
 /**
@@ -34,10 +35,10 @@ class ForwardWorker(
                 authorization = "Bearer ${creds.accessToken}",
                 deviceKey = creds.deviceApiKey,
                 request = IngestRequest(
-                    senderId = sender,
+                    sender_id = sender,
                     body = body,
-                    receivedAt = java.time.Instant.ofEpochMilli(receivedAt).toString(),
-                    clientMessageId = clientMessageId,
+                    received_at = java.time.Instant.ofEpochMilli(receivedAt).toString(),
+                    client_message_id = clientMessageId,
                 ),
             )
             CaptureLog.markForwarded(applicationContext, clientMessageId)
