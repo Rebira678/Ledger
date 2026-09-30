@@ -1,6 +1,7 @@
 import { BrowserRouter, Routes, Route, NavLink, Navigate, useNavigate } from 'react-router-dom';
 import { LayoutDashboard, Receipt, MessageSquareWarning, BarChart3, LogOut, UploadCloud } from 'lucide-react';
 
+import { Landing } from './components/Landing';
 import { Login } from './components/Login';
 import { Register } from './components/Register';
 import { Dashboard } from './components/Dashboard';
@@ -49,6 +50,8 @@ function Sidebar() {
 function Layout({ children }: { children: React.ReactNode }) {
   return (
     <div className="layout">
+      <div className="landing-bg-grid" />
+      <div className="landing-spotlight" />
       <Sidebar />
       <main className="main-content">
         {children}
@@ -67,7 +70,7 @@ function App() {
   return (
     <BrowserRouter>
       <Routes>
-        <Route path="/" element={<Navigate to="/dashboard" replace />} />
+        <Route path="/" element={<Landing />} />
         
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
