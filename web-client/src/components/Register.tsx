@@ -1,14 +1,18 @@
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
+import { Layers } from 'lucide-react';
 
 export function Register() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setLoading(true);
+    setError('');
     try {
       const res = await fetch('/v1/auth/register', {
         method: 'POST',
@@ -22,38 +26,67 @@ export function Register() {
       navigate('/dashboard');
     } catch (err: any) {
       setError(err.message);
+    } finally {
+      setLoading(false);
     }
   };
 
   return (
-    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', background: 'var(--bg-canvas)' }}>
-      <main className="glass-card" style={{ width: '100%', maxWidth: '380px', padding: '32px' }}>
-        <div style={{ textAlign: 'center', marginBottom: '24px' }}>
-          <h1 style={{ fontSize: '1.5rem', marginBottom: '8px', color: 'var(--text-primary)' }}>Create Account</h1>
-          <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', margin: 0 }}>Join Ledger to manage your transactions.</p>
+    <div className="auth-layout">
+      <main className="auth-card">
+        
+        <div className="auth-logo">
+          <Layers size={24} />
+          Ledger
+        </div>
+
+        <div className="auth-header">
+          <h1>Create an account</h1>
+          <p>Join Ledger to start automating your finances.</p>
         </div>
         
         {error && (
-          <div style={{ background: 'var(--status-danger-bg)', border: '1px solid var(--status-danger)', color: 'var(--status-danger)', padding: '12px', borderRadius: '8px', margin: '0 0 20px 0', fontSize: '0.875rem' }}>
+          <div className="error-banner">
             {error}
           </div>
         )}
 
-        <form onSubmit={handleSubmit} style={{ display: 'grid', gap: '16px' }}>
-          <div>
-            <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 500, marginBottom: '6px' }}>Email</label>
-            <input type="email" placeholder="you@example.com" required value={email} onChange={e => setEmail(e.target.value)} />
+        <form onSubmit={handleSubmit}>
+          <div className="form-group">
+            <label>Email</label>
+            <input 
+              type="email" 
+              placeholder="you@example.com" 
+              required 
+              value={email} 
+              onChange={e => setEmail(e.target.value)} 
+              disabled={loading}
+              autoComplete="email"
+            />
           </div>
-          <div>
-            <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 500, marginBottom: '6px' }}>Password</label>
-            <input type="password" placeholder="••••••••" required minLength={8} value={password} onChange={e => setPassword(e.target.value)} />
+
+          <div className="form-group">
+            <label>Password</label>
+            <input 
+              type="password" 
+              placeholder="••••••••" 
+              required 
+              minLength={8}
+              value={password} 
+              onChange={e => setPassword(e.target.value)} 
+              disabled={loading}
+              autoComplete="new-password"
+            />
           </div>
-          <button type="submit" style={{ marginTop: '8px', width: '100%' }}>Sign Up</button>
+
+          <button type="submit" disabled={loading}>
+            {loading ? 'Creating account...' : 'Sign up'}
+          </button>
         </form>
         
-        <p style={{ marginTop: '24px', textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.875rem' }}>
-          Already registered? <Link to="/login" style={{ fontWeight: 500, color: 'var(--action-primary)' }}>Sign in</Link>
-        </p>
+        <div className="auth-footer">
+          Already have an account? <Link to="/login">Sign in</Link>
+        </div>
       </main>
     </div>
   );
