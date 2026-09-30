@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 export function Transactions() {
   const [txns, setTxns] = useState<any[]>([]);
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
-  const [isLoading, setIsLoading] = useState(true);
+  const [, setIsLoading] = useState(true);
   const [editingId, setEditingId] = useState<string | null>(null);
 
   const categories = ['Groceries', 'Dining', 'Utilities', 'Transport', 'Income', 'Transfer', 'Other'];
