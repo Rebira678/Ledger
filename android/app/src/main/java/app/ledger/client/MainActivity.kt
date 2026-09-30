@@ -28,12 +28,37 @@ import kotlinx.coroutines.withContext
 class MainActivity : AppCompatActivity() {
 
     private val ui by lazy {
-        LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(48, 96, 48, 48) }
+        LinearLayout(this).apply { 
+            orientation = LinearLayout.VERTICAL
+            setPadding(48, 96, 48, 48)
+            setBackgroundColor(android.graphics.Color.parseColor("#000000"))
+        }
+    }
+
+    private fun getBentoBackground() = android.graphics.drawable.GradientDrawable().apply {
+        setColor(android.graphics.Color.parseColor("#050505"))
+        setStroke(2, android.graphics.Color.parseColor("#262626"))
+        cornerRadius = 32f
+    }
+    
+    private fun getButtonBackground() = android.graphics.drawable.GradientDrawable().apply {
+        setColor(android.graphics.Color.parseColor("#ededed"))
+        cornerRadius = 16f
+    }
+    
+    private fun getInputBackground() = android.graphics.drawable.GradientDrawable().apply {
+        setColor(android.graphics.Color.parseColor("#000000"))
+        setStroke(2, android.graphics.Color.parseColor("#404040"))
+        cornerRadius = 16f
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        renderRationale()
+        if (hasSmsPermissions()) {
+            renderMain()
+        } else {
+            renderRationale()
+        }
         setContentView(ui)
     }
 
@@ -41,13 +66,21 @@ class MainActivity : AppCompatActivity() {
     private fun renderRationale() {
         ui.removeAllViews()
         val title = TextView(this).apply {
-            text = getString(R.string.rationale_title); textSize = 22f
+            text = getString(R.string.rationale_title)
+            textSize = 24f
+            setTextColor(android.graphics.Color.parseColor("#ffffff"))
+            setTypeface(null, android.graphics.Typeface.BOLD)
         }
         val body = TextView(this).apply {
-            text = getString(R.string.rationale_body); textSize = 15f; setPadding(0, 32, 0, 32)
+            text = getString(R.string.rationale_body)
+            textSize = 15f
+            setPadding(0, 32, 0, 64)
+            setTextColor(android.graphics.Color.parseColor("#a3a3a3"))
         }
         val grant = Button(this).apply {
             text = getString(R.string.rationale_button)
+            setTextColor(android.graphics.Color.parseColor("#000000"))
+            background = getButtonBackground()
             setOnClickListener { requestSmsPermissions() }
         }
         ui.addView(title); ui.addView(body); ui.addView(grant)
@@ -81,40 +114,86 @@ class MainActivity : AppCompatActivity() {
         ui.removeAllViews()
 
         val status = TextView(this).apply {
-            text = if (DeviceCredentials.load(this@MainActivity) != null)
-                getString(R.string.status_paired) else getString(R.string.status_not_paired)
-            textSize = 16f
+            val isPaired = DeviceCredentials.load(this@MainActivity) != null
+            text = if (isPaired) getString(R.string.status_paired) else getString(R.string.status_not_paired)
+            textSize = 14f
+            setTextColor(android.graphics.Color.parseColor(if (isPaired) "#10b981" else "#ef4444"))
+            setPadding(0, 0, 0, 48)
+            setTypeface(null, android.graphics.Typeface.BOLD)
         }
 
-        val emailField = android.widget.EditText(this).apply { hint = getString(R.string.hint_email) }
+        val emailField = android.widget.EditText(this).apply {
+            hint = getString(R.string.hint_email)
+            setHintTextColor(android.graphics.Color.parseColor("#737373"))
+            setTextColor(android.graphics.Color.parseColor("#ffffff"))
+            background = getInputBackground()
+            setPadding(40, 32, 40, 32)
+            layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply {
+                setMargins(0, 0, 0, 24)
+            }
+        }
         val passField = android.widget.EditText(this).apply {
             hint = getString(R.string.hint_password)
+            setHintTextColor(android.graphics.Color.parseColor("#737373"))
+            setTextColor(android.graphics.Color.parseColor("#ffffff"))
+            background = getInputBackground()
+            setPadding(40, 32, 40, 32)
             transformationMethod = android.text.method.PasswordTransformationMethod.getInstance()
+            layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply {
+                setMargins(0, 0, 0, 48)
+            }
         }
         val loginBtn = Button(this).apply {
             text = getString(R.string.button_login)
+            setTextColor(android.graphics.Color.parseColor("#000000"))
+            background = getButtonBackground()
             setOnClickListener {
                 CoroutineScope(Dispatchers.Main).launch { loginAndPair(emailField.text.toString(), passField.text.toString()) }
             }
         }
 
-        val allowTitle = TextView(this).apply {
-            text = getString(R.string.allowlist_title); setPadding(0, 48, 0, 8); textSize = 15f
-        }
-        val allowList = TextView(this).apply {
-            text = AllowList.current(this@MainActivity).joinToString("\n") { "• $it" }; textSize = 13f
-        }
-        val logTitle = TextView(this).apply {
-            text = getString(R.string.capture_log_title); setPadding(0, 48, 0, 8); textSize = 15f
-        }
-        val logView = TextView(this).apply {
-            text = CaptureLog.entries(this@MainActivity).takeLast(20).joinToString("\n"); textSize = 12f
+        val bentoBox = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            background = getBentoBackground()
+            setPadding(48, 48, 48, 48)
+            layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply {
+                setMargins(0, 64, 0, 0)
+            }
         }
 
+        val allowTitle = TextView(this).apply {
+            text = getString(R.string.allowlist_title)
+            setPadding(0, 0, 0, 16)
+            textSize = 16f
+            setTextColor(android.graphics.Color.parseColor("#ffffff"))
+            setTypeface(null, android.graphics.Typeface.BOLD)
+        }
+        val allowList = TextView(this).apply {
+            text = AllowList.current(this@MainActivity).joinToString("\n") { "• $it" }
+            textSize = 14f
+            setTextColor(android.graphics.Color.parseColor("#a3a3a3"))
+        }
+        val logTitle = TextView(this).apply {
+            text = getString(R.string.capture_log_title)
+            setPadding(0, 64, 0, 16)
+            textSize = 16f
+            setTextColor(android.graphics.Color.parseColor("#ffffff"))
+            setTypeface(null, android.graphics.Typeface.BOLD)
+        }
+        val logView = TextView(this).apply {
+            text = CaptureLog.entries(this@MainActivity).takeLast(10).joinToString("\n\n")
+            textSize = 12f
+            setTextColor(android.graphics.Color.parseColor("#737373"))
+        }
+
+        bentoBox.addView(allowTitle); bentoBox.addView(allowList)
+        bentoBox.addView(logTitle); bentoBox.addView(logView)
+
         ui.addView(status)
-        ui.addView(emailField); ui.addView(passField); ui.addView(loginBtn)
-        ui.addView(allowTitle); ui.addView(allowList)
-        ui.addView(logTitle); ui.addView(logView)
+        if (DeviceCredentials.load(this@MainActivity) == null) {
+            ui.addView(emailField); ui.addView(passField); ui.addView(loginBtn)
+        }
+        ui.addView(bentoBox)
     }
 
     private suspend fun loginAndPair(email: String, password: String) {
