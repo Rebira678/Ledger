@@ -66,8 +66,10 @@ export function Transactions() {
 
   return (
     <div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px', flexWrap: 'wrap', gap: '16px' }}>
-        <h1>Transactions</h1>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '32px', flexWrap: 'wrap', gap: '16px' }}>
+        <div className="section-header" style={{ textAlign: 'left', padding: 0, margin: 0 }}>
+          <h2 className="reveal-text" style={{ fontSize: '2.5rem' }}>Transactions</h2>
+        </div>
         
         <div style={{ display: 'flex', gap: '16px', flex: isMobile ? 1 : 'none' }}>
           <div style={{ position: 'relative', flex: 1 }}>
@@ -80,7 +82,9 @@ export function Transactions() {
         </div>
       </div>
 
-      <div className="glass-card" style={{ padding: 0, overflow: 'hidden' }}>
+      <div className="bento-card" style={{ padding: 0, overflow: 'hidden' }}>
+        <div className="bento-glow"></div>
+        <div className="bento-content" style={{ padding: 0 }}>
         {isMobile ? (
           <div style={{ display: 'flex', flexDirection: 'column' }}>
             {txns.map(t => (
@@ -161,6 +165,7 @@ export function Transactions() {
             </table>
           </div>
         )}
+        </div>
       </div>
     </div>
   );
