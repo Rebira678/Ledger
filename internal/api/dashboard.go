@@ -9,10 +9,10 @@ import (
 // DashboardRoutes serves the compiled React SPA.
 func (s *Server) DashboardRoutes() http.Handler {
 	distDir := "./web-client/dist"
-	
+
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		path := filepath.Join(distDir, r.URL.Path)
-		
+
 		// If root, serve index.html
 		if r.URL.Path == "/" {
 			http.ServeFile(w, r, filepath.Join(distDir, "index.html"))
