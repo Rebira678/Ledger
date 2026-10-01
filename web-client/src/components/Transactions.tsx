@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react';
 
 export function Transactions() {
   const [txns, setTxns] = useState<any[]>([]);
+  const [searchQuery, setSearchQuery] = useState('');
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
   const [, setIsLoading] = useState(true);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -74,7 +75,12 @@ export function Transactions() {
         <div style={{ display: 'flex', gap: '16px', flex: isMobile ? 1 : 'none' }}>
           <div style={{ position: 'relative', flex: 1 }}>
             <Search size={18} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
-            <input placeholder="Search counterparty..." style={{ paddingLeft: '40px' }} />
+            <input 
+              placeholder="Search counterparty..." 
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              style={{ paddingLeft: '40px' }} 
+            />
           </div>
           <button className="secondary">
             <Filter size={16} /> Filter
@@ -87,37 +93,36 @@ export function Transactions() {
         <div className="bento-content" style={{ padding: 0 }}>
         {isMobile ? (
           <div style={{ display: 'flex', flexDirection: 'column' }}>
-            {txns.map(t => (
-              <div key={t.id} style={{ padding: '16px', borderBottom: '1px solid var(--border-subtle)', display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                  <div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                      <span style={{ fontWeight: 500, color: 'var(--text-primary)' }}>{t.counterparty}</span>
-                      <span className={`badge ${t.direction === 'credit' ? 'success' : 'danger'}`} style={{ fontSize: '0.65rem', padding: '2px 6px', textTransform: 'capitalize' }}>{t.direction}</span>
-                    </div>
-                    <div style={{ color: 'var(--text-muted)', fontSize: '0.75rem', marginTop: '4px' }}>{new Date(t.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</div>
-                  </div>
-                  <div className="tabular-data" style={{ fontWeight: 500, color: t.direction === 'credit' ? 'var(--status-success)' : 'var(--status-danger)' }}>
-                    {t.direction === 'credit' ? '+' : '−'}{t.amount.toLocaleString(undefined, { minimumFractionDigits: 2 })}
-                  </div>
-                </div>
+            {txns.filter(t => t.counterparty?.toLowerCase().includes(searchQuery.toLowerCase()) || t.category?.toLowerCase().includes(searchQuery.toLowerCase())).map(t => (
+              <div key={t.id} onClick={() => setEditingId(t.id)} style={{ padding: '16px 20px', borderBottom: '1px solid rgba(255,255,255,0.05)', display: 'flex', flexDirection: 'column', gap: '12px', cursor: 'pointer' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  {editingId === t.id ? (
-                    <select 
-                      autoFocus
-                      defaultValue={t.category}
-                      onChange={(e) => handleCategoryChange(t.id, e.target.value)}
-                      onBlur={() => setEditingId(null)}
-                      style={{ padding: '4px 8px', fontSize: '0.875rem' }}
-                    >
-                      {categories.map(c => <option key={c} value={c}>{c}</option>)}
-                    </select>
-                  ) : t.category ? (
-                    <span className="badge neutral">{t.category}</span>
-                  ) : (
-                    <em style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>Unassigned</em>
-                  )}
-                  <button className="secondary" onClick={() => setEditingId(t.id)} style={{ padding: '4px 12px', fontSize: '0.75rem', borderRadius: '4px', height: '24px' }}>Edit</button>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', overflow: 'hidden', paddingRight: '16px' }}>
+                    <div style={{ fontWeight: 600, color: 'var(--text-primary)', fontSize: '0.95rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{t.counterparty}</div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <span style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>{new Date(t.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}</span>
+                      <span style={{ width: '4px', height: '4px', borderRadius: '50%', background: 'rgba(255,255,255,0.2)' }}></span>
+                      <span style={{ color: t.category ? 'var(--text-secondary)' : 'var(--text-muted)', fontSize: '0.75rem' }}>{t.category || 'Unassigned'}</span>
+                    </div>
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '6px', flexShrink: 0 }}>
+                    <div className="tabular-data" style={{ fontWeight: 600, fontSize: '1rem', color: t.direction === 'credit' ? 'var(--status-success)' : 'var(--text-primary)' }}>
+                      {t.direction === 'credit' ? '+' : '-'}{t.amount.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                    </div>
+                    {editingId === t.id ? (
+                        <select 
+                          autoFocus
+                          defaultValue={t.category}
+                          onChange={(e) => handleCategoryChange(t.id, e.target.value)}
+                          onBlur={() => setEditingId(null)}
+                          onClick={(e) => e.stopPropagation()}
+                          style={{ padding: '2px 8px', fontSize: '0.75rem', background: 'rgba(0,0,0,0.5)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '4px', color: 'var(--text-primary)' }}
+                        >
+                          {categories.map(c => <option key={c} value={c}>{c}</option>)}
+                        </select>
+                    ) : (
+                      <span className={`badge ${t.direction === 'credit' ? 'success' : 'neutral'}`} style={{ fontSize: '0.65rem', padding: '2px 6px', textTransform: 'capitalize' }}>{t.direction}</span>
+                    )}
+                  </div>
                 </div>
               </div>
             ))}
@@ -136,7 +141,7 @@ export function Transactions() {
                 </tr>
               </thead>
               <tbody>
-                {txns.map(t => (
+                {txns.filter(t => t.counterparty?.toLowerCase().includes(searchQuery.toLowerCase()) || t.category?.toLowerCase().includes(searchQuery.toLowerCase())).map(t => (
                   <tr key={t.id}>
                     <td style={{ color: 'var(--text-muted)' }}>{new Date(t.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</td>
                     <td style={{ fontWeight: 500, color: 'var(--text-primary)' }}>{t.counterparty}</td>
