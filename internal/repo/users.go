@@ -112,4 +112,24 @@ func (r *DeviceRepo) GetUserByAPIKeyHash(ctx context.Context, apiKeyHash string)
 	return &d, nil
 }
 
+// ListUserDevices returns all devices paired by a user.
+func (r *DeviceRepo) ListUserDevices(ctx context.Context, userID string) ([]*domain.Device, error) {
+	rows, err := r.db.QueryContext(ctx,
+		`SELECT id, user_id, device_model, os_version, api_key_hash, created_at
+		 FROM devices WHERE user_id = $1 ORDER BY created_at DESC`, userID)
+	if err != nil {
+		return nil, wrap("listing devices", err)
+	}
+	defer rows.Close()
+	var out []*domain.Device
+	for rows.Next() {
+		var d domain.Device
+		if err := rows.Scan(&d.ID, &d.UserID, &d.DeviceModel, &d.OSVersion, &d.APIKeyHash, &d.CreatedAt); err != nil {
+			return nil, wrap("scanning device", err)
+		}
+		out = append(out, &d)
+	}
+	return out, rows.Err()
+}
+
 var _ = errors.Is
