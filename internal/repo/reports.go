@@ -149,16 +149,42 @@ func (r *ReportRepo) SumByCategoryForPeriod(ctx context.Context, userID, from, t
 	return out, rows.Err()
 }
 
-// EstimateBalance returns (credits - debits) across all history for a user.
+// IncomeAndExpenseForPeriod returns total credits (income) and debits (expense) in a period.
+func (r *ReportRepo) IncomeAndExpenseForPeriod(ctx context.Context, userID, from, to string) (float64, float64, error) {
+	row := r.db.QueryRowContext(ctx,
+		`SELECT coalesce(sum(CASE WHEN direction = 'credit' THEN amount ELSE 0 END), 0),
+		        coalesce(sum(CASE WHEN direction = 'debit' THEN amount ELSE 0 END), 0)
+		 FROM transactions
+		 WHERE user_id = $1 AND occurred_at >= $2::timestamptz AND occurred_at < $3::timestamptz`, userID, from, to)
+	var inc, exp float64
+	if err := row.Scan(&inc, &exp); err != nil {
+		return 0, 0, err
+	}
+	return inc, exp, nil
+}
+
+// EstimateBalance returns the balance from the most recent transaction that includes one.
+// If none exist, it starts at 0.
 func (r *ReportRepo) EstimateBalance(ctx context.Context, userID string) (float64, error) {
 	row := r.db.QueryRowContext(ctx,
-		`SELECT coalesce(sum(CASE direction WHEN 'credit' THEN amount ELSE -amount END), 0)
-		 FROM transactions WHERE user_id = $1`, userID)
-	var bal float64
+		`SELECT balance::text FROM transactions 
+		 WHERE user_id = $1 AND balance IS NOT NULL 
+		 ORDER BY occurred_at DESC, id DESC LIMIT 1`, userID)
+	var bal sql.NullString
 	if err := row.Scan(&bal); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return 0, nil
+		}
 		return 0, wrap("estimating balance", err)
 	}
-	return bal, nil
+	if !bal.Valid || bal.String == "" {
+		return 0, nil
+	}
+	m, err := domain.ParseMoney(bal.String)
+	if err != nil {
+		return 0, wrap("parsing balance", err)
+	}
+	return m.Float64(), nil
 }
 
 var _ = errors.Is
