@@ -147,6 +147,9 @@ func run() error {
 			OcurredAt:    occurredAt,
 		}, nil
 	}
+	srv.ParseSMSFallback = func(ctx context.Context, senderID, body string) (*domain.ParsedTransaction, error) {
+		return llmClient.ParseSMS(ctx, senderID, body)
+	}
 
 	// API + dashboard on the same mux with shared middleware.
 	rootMux := http.NewServeMux()
