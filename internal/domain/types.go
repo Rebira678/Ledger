@@ -64,9 +64,11 @@ func (m Money) Value() (driver.Value, error) {
 
 // User is a registered account.
 type User struct {
-	ID        string
-	Email     string
-	CreatedAt time.Time
+	ID          string
+	Email       string
+	DisplayName string
+	AvatarURL   string
+	CreatedAt   time.Time
 }
 
 // Device is a paired Android device with its API key hash.
