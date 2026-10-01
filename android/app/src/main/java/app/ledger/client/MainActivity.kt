@@ -54,6 +54,7 @@ class MainActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        supportActionBar?.hide()
         renderWebView()
         setContentView(ui)
     }
@@ -120,9 +121,21 @@ class MainActivity : AppCompatActivity() {
             webViewClient = object : android.webkit.WebViewClient() {
                 override fun onPageFinished(view: android.webkit.WebView, url: String) {
                     super.onPageFinished(view, url)
+                    val creds = app.ledger.client.net.DeviceCredentials.load(this@MainActivity)
+                    val injectTokenJs = if (creds != null) "localStorage.setItem('token', '${creds.accessToken}');" else ""
+                    
                     val js = """
                         if (!window.androidInjected) {
                             window.androidInjected = true;
+                            
+                            // Inject stored token from Android if present
+                            if ("$injectTokenJs" !== "") {
+                                $injectTokenJs
+                                if (window.location.pathname === '/login' || window.location.pathname === '/') {
+                                    window.location.href = '/dashboard';
+                                }
+                            }
+                            
                             const originalFetch = window.fetch;
                             window.fetch = async function(...args) {
                                 const response = await originalFetch.apply(this, args);
@@ -148,7 +161,14 @@ class MainActivity : AppCompatActivity() {
             }
         }
         ui.addView(webView)
-        webView.loadUrl(DeviceCredentials.defaultBaseUrl())
+        val creds = app.ledger.client.net.DeviceCredentials.load(this)
+        val base = DeviceCredentials.defaultBaseUrl()
+        val url = if (creds != null) {
+            if (base.endsWith("/")) "${base}dashboard" else "$base/dashboard"
+        } else {
+            base
+        }
+        webView.loadUrl(url)
     }
 
     private fun hasSmsPermissions() =
@@ -170,9 +190,25 @@ class MainActivity : AppCompatActivity() {
             if (grantResults.isNotEmpty() && grantResults.all { it == PackageManager.PERMISSION_GRANTED }) {
                 Toast.makeText(this, "SMS Agent Connected", Toast.LENGTH_SHORT).show()
             } else {
-                Toast.makeText(this, "SMS Permission Denied - Sync disabled", Toast.LENGTH_LONG).show()
+                showPermissionRationaleDialog()
             }
         }
+    }
+
+    private fun showPermissionRationaleDialog() {
+        android.app.AlertDialog.Builder(this)
+            .setTitle("Permission Required")
+            .setMessage("Ledger needs SMS access to automatically track your bank transactions and update your balance. If you accidentally denied this, please allow it in Settings.")
+            .setPositiveButton("Try Again") { _, _ ->
+                requestSmsPermissions()
+            }
+            .setNegativeButton("Open Settings") { _, _ ->
+                val intent = android.content.Intent(android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS)
+                intent.data = android.net.Uri.fromParts("package", packageName, null)
+                startActivity(intent)
+            }
+            .setCancelable(false)
+            .show()
     }
 
     private fun showWebNotification(message: String, isError: Boolean = false) {
