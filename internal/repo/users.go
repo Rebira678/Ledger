@@ -11,14 +11,14 @@ import (
 // UserRepo persists users.
 type UserRepo struct{ db DB }
 
-const userCols = `id, email, password_hash, created_at`
+const userCols = `id, email, password_hash, display_name, avatar_url, created_at`
 
 func scanUser(row *sql.Row) (*domain.User, string, error) {
 	var (
 		u    domain.User
 		hash string
 	)
-	if err := row.Scan(&u.ID, &u.Email, &hash, &u.CreatedAt); err != nil {
+	if err := row.Scan(&u.ID, &u.Email, &hash, &u.DisplayName, &u.AvatarURL, &u.CreatedAt); err != nil {
 		return nil, "", err
 	}
 	return &u, hash, nil
@@ -35,6 +35,17 @@ func (r *UserRepo) CreateUser(ctx context.Context, id, email, passwordHash strin
 		return nil, wrap("creating user", mapPgError(err))
 	}
 	return u, nil
+}
+
+// UpdateUserProfile updates a user's display name and avatar URL.
+func (r *UserRepo) UpdateUserProfile(ctx context.Context, id, displayName, avatarURL string) error {
+	_, err := r.db.ExecContext(ctx,
+		`UPDATE users SET display_name = $1, avatar_url = $2 WHERE id = $3`,
+		displayName, avatarURL, id)
+	if err != nil {
+		return wrap("updating user profile", mapPgError(err))
+	}
+	return nil
 }
 
 // GetByEmail returns the user and password hash for credential verification.
