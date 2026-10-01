@@ -35,12 +35,12 @@ func (CBEParser) SenderIDs() []string { return []string{"CBE", "CBE-BIRR", "127"
 var cbePrefixRe = regexp.MustCompile(`(?i)^\s*CBE\s*[:\-]\s*`)
 
 var (
-	cbeAmountRe  = regexp.MustCompile(`(?i)(?:received|paid|transfer(?: of)?)\s+(?:ETB\s*)?([0-9][0-9,]*(?:\.[0-9]{2})?)\s*(?:ETB|Birr)?`)
-	cbeFromRe    = regexp.MustCompile(`(?i)from\s+(?:your account\s+)?(?:to\s+)?([A-Z][A-Za-z.'\- ]+?)(?:\s*\(|\s+using\s+|\s+on\s+|\.|$)`)
-	cbeToRe      = regexp.MustCompile(`(?i)(?:paid\s+(?:[0-9][0-9,]*(?:\.[0-9]{2})?)\s*(?:ETB|Birr)?\s+to|to\s+)([A-Z][A-Za-z.'\- ]+?)(?:\s*\(|\s+using\s+|\s+on\s+|\.|$)`)
-	cbeDateRe    = regexp.MustCompile(`(\d{1,2})/(\d{1,2})/(\d{4})\s+(\d{1,2}):(\d{2})`)
-	cbeRefRe     = regexp.MustCompile(`(?i)Ref(?:erence)?\s*[:#]?\s*([A-Z0-9]+)`)
-	cbeBalanceRe = regexp.MustCompile(`(?i)balance\s*[:#]?\s*(?:ETB\s*)?([0-9][0-9,]*(?:\.[0-9]{2})?)`)
+	cbeAmountRe  = regexp.MustCompile(`(?i)(?:received|paid|credited with|transfer(?: of)?|transferred|debit transaction of)\s+(?:ETB\s*)?([0-9][0-9,]*(?:\.[0-9]{0,2})?)\s*(?:ETB|Birr|Br\.?)?`)
+	cbeFromRe    = regexp.MustCompile(`(?i)from\s+(?:your account\s+)?(?:to\s+)?([A-Z0-9][A-Za-z0-9.'\- ]+?)(?:\s*\(|\s+using\s+|\s+on\s+|\.|$)`)
+	cbeToRe      = regexp.MustCompile(`(?i)(?:paid\s+(?:[0-9][0-9,]*(?:\.[0-9]{0,2})?)\s*(?:ETB|Birr|Br\.?)?\s+to|to\s+)([A-Z0-9][A-Za-z0-9.'\- ]+?)(?:\s*\(|\s+using\s+|\s+on\s+|\.|$)`)
+	cbeDateRe    = regexp.MustCompile(`(\d{1,2})[-/](\d{1,2})[-/](\d{2,4})\s+(\d{1,2}):(\d{2})(?::\d{2})?`)
+	cbeRefRe     = regexp.MustCompile(`(?i)(?:Ref(?:erence)?|Txn\s*ID|BranchReceipt/|mbreciept\.cbe\.com\.et/)\s*[:#]?\s*([a-zA-Z0-9\-]+)`)
+	cbeBalanceRe = regexp.MustCompile(`(?i)balance\s*[:#]?\s*(?:ETB\s*)?([0-9][0-9,]*(?:\.[0-9]{0,2})?)`)
 )
 
 // Match reports whether the message looks like a CBE notification.
@@ -50,7 +50,7 @@ func (CBEParser) Match(msg domain.RawMessage) bool {
 		return true
 	}
 	lower := strings.ToLower(b)
-	return strings.Contains(lower, "cbe") && cbeDateRe.MatchString(b) && cbeAmountRe.MatchString(b)
+	return strings.Contains(lower, "cbe") && cbeAmountRe.MatchString(b)
 }
 
 // Parse extracts the transaction (FR-3.2: amount, direction, counterparty,
@@ -71,7 +71,7 @@ func (p CBEParser) Parse(msg domain.RawMessage) (domain.ParsedTransaction, error
 	// Direction: credit for "received", debit for paid/transfers.
 	lower := strings.ToLower(body)
 	direction := domain.DirectionDebit
-	if strings.Contains(lower, "received") || strings.Contains(lower, "deposited") {
+	if strings.Contains(lower, "received") || strings.Contains(lower, "deposited") || strings.Contains(lower, "credited") {
 		direction = domain.DirectionCredit
 	}
 
@@ -86,7 +86,7 @@ func (p CBEParser) Parse(msg domain.RawMessage) (domain.ParsedTransaction, error
 
 	occurredAt, err := parseCBETimestamp(cbeDateRe.FindStringSubmatch(body))
 	if err != nil {
-		return domain.ParsedTransaction{}, fmt.Errorf("parsing CBE sms: %w: %v", ErrParse, err)
+		occurredAt = msg.ReceivedAt
 	}
 
 	ref := ""
@@ -97,9 +97,17 @@ func (p CBEParser) Parse(msg domain.RawMessage) (domain.ParsedTransaction, error
 		return domain.ParsedTransaction{}, fmt.Errorf("parsing CBE sms: %w: missing reference", ErrParse)
 	}
 
+	var balance *domain.Money
+	if m := cbeBalanceRe.FindStringSubmatch(body); m != nil {
+		if bal, err := parseAmount(m[1]); err == nil {
+			balance = &bal
+		}
+	}
+
 	return domain.ParsedTransaction{
 		Amount: amount, Currency: "ETB", Direction: direction,
 		Counterparty: counterparty, OccurredAt: occurredAt, Reference: ref,
+		Balance: balance,
 	}, nil
 }
 
@@ -110,6 +118,9 @@ func parseCBETimestamp(m []string) (time.Time, error) {
 	day, _ := strconv.Atoi(m[1])
 	month, _ := strconv.Atoi(m[2])
 	year, _ := strconv.Atoi(m[3])
+	if year < 100 {
+		year += 2000
+	}
 	hour, _ := strconv.Atoi(m[4])
 	minute, _ := strconv.Atoi(m[5])
 	// CBE SMS timestamps are local Ethiopian time (UTC+3).
@@ -129,9 +140,11 @@ func parseAmount(s string) (domain.Money, error) {
 		return domain.Money{}, fmt.Errorf("invalid amount %q: %v", s, err)
 	}
 	var cents int64
-	if len(parts) == 2 {
-		if len(parts[1]) != 2 {
-			return domain.Money{}, fmt.Errorf("invalid cents in %q", s)
+	if len(parts) == 2 && parts[1] != "" {
+		if len(parts[1]) == 1 {
+			parts[1] += "0" // handle .7 as .70
+		} else if len(parts[1]) > 2 {
+			parts[1] = parts[1][:2]
 		}
 		cents, err = strconv.ParseInt(parts[1], 10, 64)
 		if err != nil {
