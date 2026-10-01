@@ -40,7 +40,7 @@ var (
 	cbeToRe      = regexp.MustCompile(`(?i)(?:paid\s+(?:[0-9][0-9,]*(?:\.[0-9]{0,2})?)\s*(?:ETB|Birr|Br\.?)?\s+to|to\s+)([A-Z0-9][A-Za-z0-9.'\- ]+?)(?:\s*\(|\s+using\s+|\s+on\s+|\.|$)`)
 	cbeDateRe    = regexp.MustCompile(`(\d{1,2})[-/](\d{1,2})[-/](\d{2,4})\s+(\d{1,2}):(\d{2})(?::\d{2})?`)
 	cbeRefRe     = regexp.MustCompile(`(?i)(?:Ref(?:erence)?|Txn\s*ID|BranchReceipt/|mbreciept\.cbe\.com\.et/)\s*[:#]?\s*([a-zA-Z0-9\-]+)`)
-	cbeBalanceRe = regexp.MustCompile(`(?i)balance\s*[:#]?\s*(?:ETB\s*)?([0-9][0-9,]*(?:\.[0-9]{0,2})?)`)
+	cbeBalanceRe = regexp.MustCompile(`(?i)balance\s*(?:is\s+|[:#]\s*)?(?:ETB\s*)?([0-9][0-9,]*(?:\.[0-9]{0,2})?)`)
 )
 
 // Match reports whether the message looks like a CBE notification.
