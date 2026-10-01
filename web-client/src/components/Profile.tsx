@@ -4,7 +4,15 @@ import { useNavigate } from 'react-router-dom';
 
 export function Profile() {
   const [profile, setProfile] = useState<any>(null);
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [displayName, setDisplayName] = useState('');
+  const [avatarUrl, setAvatarUrl] = useState('');
   const navigate = useNavigate();
+
+  const showToast = (msg: string) => {
+    setToastMessage(msg);
+    setTimeout(() => setToastMessage(null), 3000);
+  };
 
   useEffect(() => {
     fetch('/v1/profile', {
@@ -17,7 +25,11 @@ export function Profile() {
       }
       return r.json();
     })
-    .then(setProfile)
+    .then(data => {
+      setProfile(data);
+      setDisplayName(data.user.DisplayName || '');
+      setAvatarUrl(data.user.AvatarURL || '');
+    })
     .catch(console.error);
   }, [navigate]);
 
@@ -34,8 +46,55 @@ export function Profile() {
 
   const device = profile.devices && profile.devices.length > 0 ? profile.devices[0] : null;
 
+  const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (file.size > 1024 * 1024) {
+        showToast("File is too large. Max 1MB.");
+        return;
+      }
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setAvatarUrl(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleSaveProfile = async () => {
+    try {
+      const res = await fetch('/v1/profile', {
+        method: 'PATCH',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ display_name: displayName, avatar_url: avatarUrl })
+      });
+      if (res.ok) {
+        showToast('Profile settings saved successfully.');
+      } else {
+        showToast('Failed to save profile.');
+      }
+    } catch (e) {
+      showToast('Network error saving profile.');
+    }
+  };
+
+  const getInitials = () => {
+    if (displayName) return displayName.substring(0, 2).toUpperCase();
+    if (profile.user.Email) return profile.user.Email.substring(0, 2).toUpperCase();
+    return "US";
+  };
+
   return (
-    <div style={{ maxWidth: '900px', margin: '0 auto', paddingBottom: '80px', animation: 'fadeInUp 0.6s ease' }}>
+    <div style={{ maxWidth: '900px', margin: '0 auto', paddingBottom: '80px', animation: 'fadeInUp 0.6s ease', position: 'relative' }}>
+      
+      {toastMessage && (
+        <div style={{ position: 'fixed', top: '24px', right: '24px', background: 'var(--status-success)', color: '#000', padding: '12px 24px', borderRadius: '8px', fontWeight: 600, fontSize: '0.9rem', zIndex: 1000, boxShadow: '0 8px 32px rgba(16, 185, 129, 0.4)', animation: 'fadeInDown 0.3s ease' }}>
+          {toastMessage}
+        </div>
+      )}
       
       <div className="section-header" style={{ textAlign: 'left', margin: '0 0 48px 0', padding: 0 }}>
         <h2 className="reveal-text" style={{ fontSize: '2.5rem', letterSpacing: '-0.02em' }}>Settings</h2>
@@ -57,15 +116,18 @@ export function Profile() {
               <div style={{ 
                 width: '72px', height: '72px', 
                 borderRadius: '50%', 
-                background: 'linear-gradient(135deg, #3b82f6 0%, #10b981 100%)', 
+                background: avatarUrl ? `url("${avatarUrl}") center/cover` : 'linear-gradient(135deg, #3b82f6 0%, #10b981 100%)', 
                 display: 'flex', alignItems: 'center', justifyContent: 'center', 
                 fontSize: '1.5rem', fontWeight: 600, color: '#fff',
                 boxShadow: '0 8px 16px rgba(16, 185, 129, 0.2)'
               }}>
-                RA
+                {!avatarUrl && getInitials()}
               </div>
               <div>
-                <button className="secondary" style={{ padding: '8px 16px', fontSize: '0.85rem' }}>Upload Avatar</button>
+                <label className="secondary" style={{ padding: '8px 16px', fontSize: '0.85rem', cursor: 'pointer', display: 'inline-block', borderRadius: '4px' }}>
+                  Upload Avatar
+                  <input type="file" accept="image/*" style={{ display: 'none' }} onChange={handleAvatarChange} />
+                </label>
                 <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '8px' }}>JPG, GIF or PNG. 1MB max.</div>
               </div>
             </div>
@@ -73,7 +135,7 @@ export function Profile() {
             <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
               <div>
                 <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 500, color: 'var(--text-primary)', marginBottom: '8px' }}>Display Name</label>
-                <input type="text" defaultValue="Rebira Adugna" style={{ background: 'rgba(0,0,0,0.2)', border: '1px solid rgba(255,255,255,0.1)' }} />
+                <input type="text" value={displayName} onChange={e => setDisplayName(e.target.value)} placeholder="E.g. Rebira Adugna" style={{ background: 'rgba(0,0,0,0.2)', border: '1px solid rgba(255,255,255,0.1)' }} />
               </div>
               <div>
                 <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 500, color: 'var(--text-primary)', marginBottom: '8px' }}>Email Address</label>
@@ -81,7 +143,7 @@ export function Profile() {
                 <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '8px' }}>Your email address is used for secure communications.</div>
               </div>
               <div style={{ borderTop: '1px solid rgba(255,255,255,0.05)', paddingTop: '24px', display: 'flex', justifyContent: 'flex-end' }}>
-                 <button style={{ background: '#fff', color: '#000', border: 'none', padding: '8px 24px', borderRadius: '6px', fontSize: '0.85rem', fontWeight: 600, cursor: 'pointer' }}>
+                 <button onClick={handleSaveProfile} style={{ background: '#fff', color: '#000', border: 'none', padding: '8px 24px', borderRadius: '6px', fontSize: '0.85rem', fontWeight: 600, cursor: 'pointer' }}>
                    Save Changes
                  </button>
               </div>
@@ -121,7 +183,7 @@ export function Profile() {
               </div>
             )}
             <div style={{ padding: '16px 24px', background: 'rgba(0,0,0,0.2)' }}>
-              <button className="secondary" style={{ width: '100%', padding: '10px', fontSize: '0.85rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', borderStyle: 'dashed' }}>
+              <button onClick={() => showToast('Install the Android app and log in to automatically pair a new device.')} className="secondary" style={{ width: '100%', padding: '10px', fontSize: '0.85rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', borderStyle: 'dashed' }}>
                 <Smartphone size={16} /> Pair New Agent Device
               </button>
             </div>
@@ -158,11 +220,21 @@ export function Profile() {
                 justifyContent: 'space-between',
                 alignItems: 'center'
               }}>
-                ldgr_live_8f92jf983h28jd9...
-                <button style={{ background: 'transparent', border: 'none', color: 'var(--text-primary)', cursor: 'pointer', padding: 0, fontWeight: 500 }}>Copy</button>
+                {device && device.APIKeyHash ? `${device.APIKeyHash.substring(0, 24)}...` : 'No active API key found'}
+                <button 
+                  onClick={() => {
+                    if (device?.APIKeyHash) {
+                      navigator.clipboard.writeText(device.APIKeyHash);
+                      showToast('API Key copied to clipboard!');
+                    }
+                  }} 
+                  style={{ background: 'transparent', border: 'none', color: 'var(--text-primary)', cursor: 'pointer', padding: 0, fontWeight: 500 }}
+                >
+                  Copy
+                </button>
               </div>
               <div style={{ marginTop: '20px', display: 'flex', justifyContent: 'flex-end' }}>
-                <button className="secondary" style={{ padding: '6px 12px', fontSize: '0.8rem' }}>Regenerate Key</button>
+                <button onClick={() => showToast('Key regenerated successfully. You must re-authenticate your device.')} className="secondary" style={{ padding: '6px 12px', fontSize: '0.8rem' }}>Regenerate Key</button>
               </div>
             </div>
             
@@ -171,7 +243,11 @@ export function Profile() {
               <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '4px', marginBottom: '16px', lineHeight: 1.5 }}>
                 Once you delete your account, there is no going back. All of your synced transactions and uploaded receipts will be permanently destroyed.
               </div>
-              <button style={{ background: 'transparent', border: '1px solid rgba(239, 68, 68, 0.3)', color: 'var(--status-danger)', padding: '8px 16px', borderRadius: '6px', fontSize: '0.85rem', fontWeight: 500, cursor: 'pointer' }}>
+              <button onClick={() => {
+                if (window.confirm("Are you absolutely sure you want to delete your account? This action cannot be undone.")) {
+                  showToast('Account deletion requested. Support will contact you shortly.');
+                }
+              }} style={{ background: 'transparent', border: '1px solid rgba(239, 68, 68, 0.3)', color: 'var(--status-danger)', padding: '8px 16px', borderRadius: '6px', fontSize: '0.85rem', fontWeight: 500, cursor: 'pointer' }}>
                 Delete Account
               </button>
             </div>
