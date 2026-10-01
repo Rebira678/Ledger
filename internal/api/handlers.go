@@ -39,6 +39,8 @@ type Server struct {
 
 	// ParseReceipt extracts a transaction from an image using the LLM.
 	ParseReceipt func(ctx context.Context, mimeType string, imageBytes []byte) (*domain.Transaction, error)
+	// ParseSMSFallback uses LLM to parse an unrecognized SMS format.
+	ParseSMSFallback func(ctx context.Context, senderID, body string) (*domain.ParsedTransaction, error)
 }
 
 // Config carries the handler-level configuration subset.
@@ -281,24 +283,36 @@ func (s *Server) handleIngestSMS(w http.ResponseWriter, r *http.Request) {
 
 	parsed, perr := s.Parser.ParseSender(req.SenderID, req.Body, receivedAt)
 	if perr != nil {
-		// Route unmatched messages to the review queue, never fail silently (FR-3.3).
-		if errors.Is(perr, parsers.ErrUnmatchedFormat) {
-			if qerr := s.Repo.Messages.SetRawMessageOutcome(r.Context(), raw.ID, "queued_for_review", "", "no parser matched sender/format"); qerr != nil {
-				httpx.WriteError(w, httpx.MapDomainError(qerr))
+		if errors.Is(perr, parsers.ErrUnmatchedFormat) && s.ParseSMSFallback != nil {
+			aiParsed, aiErr := s.ParseSMSFallback(r.Context(), req.SenderID, req.Body)
+			if aiErr == nil && aiParsed != nil {
+				parsed = *aiParsed
+				perr = nil
+				parsed.OccurredAt = receivedAt // LLM might not know exact date
+			}
+		}
+
+		if perr != nil {
+			// Route unmatched messages to the review queue, never fail silently (FR-3.3).
+			if errors.Is(perr, parsers.ErrUnmatchedFormat) {
+				if qerr := s.Repo.Messages.SetRawMessageOutcome(r.Context(), raw.ID, "queued_for_review", "", "no parser matched sender/format"); qerr != nil {
+					httpx.WriteError(w, httpx.MapDomainError(qerr))
+					return
+				}
+				writeJSON(w, http.StatusAccepted, map[string]any{
+					"transaction_id": nil, "status": "queued_for_review", "confidence": nil,
+				})
 				return
 			}
-			writeJSON(w, http.StatusAccepted, map[string]any{
-				"transaction_id": nil, "status": "queued_for_review", "confidence": nil,
-			})
+			if serr := s.Repo.Messages.SetRawMessageOutcome(r.Context(), raw.ID, "failed", "", perr.Error()); serr != nil {
+				httpx.WriteError(w, httpx.MapDomainError(serr))
+				return
+			}
+			httpx.WriteError(w, httpx.NewAPIErrorf(http.StatusUnprocessableEntity, "VALIDATION_ERROR", "body", "parsing sms: %v", perr))
 			return
 		}
-		if serr := s.Repo.Messages.SetRawMessageOutcome(r.Context(), raw.ID, "failed", "", perr.Error()); serr != nil {
-			httpx.WriteError(w, httpx.MapDomainError(serr))
-			return
-		}
-		httpx.WriteError(w, httpx.NewAPIErrorf(http.StatusUnprocessableEntity, "VALIDATION_ERROR", "body", "parsing sms: %v", perr))
-		return
 	}
+
 
 	txn := &domain.Transaction{
 		ID: domain.MustNewID("txn"), UserID: ident.UserID, DeviceID: ident.DeviceID,
@@ -783,4 +797,36 @@ func (s *Server) handleGetProfile(w http.ResponseWriter, r *http.Request) {
 		"user": user,
 		"devices": devices,
 	})
+}
+
+func (s *Server) handleUpdateProfile(w http.ResponseWriter, r *http.Request) {
+	userID := MustUserID(r.Context())
+	var req struct {
+		DisplayName string `json:"display_name"`
+		AvatarURL   string `json:"avatar_url"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		httpx.WriteError(w, httpx.NewAPIErrorf(http.StatusBadRequest, "BAD_REQUEST", "", "invalid json"))
+		return
+	}
+
+	// Just merge with existing since we don't want to blank out one if only updating the other
+	user, err := s.Repo.Users.GetByID(r.Context(), userID)
+	if err != nil {
+		httpx.WriteError(w, httpx.MapDomainError(err))
+		return
+	}
+
+	if req.DisplayName == "" {
+		req.DisplayName = user.DisplayName
+	}
+	if req.AvatarURL == "" {
+		req.AvatarURL = user.AvatarURL
+	}
+
+	if err := s.Repo.Users.UpdateUserProfile(r.Context(), userID, req.DisplayName, req.AvatarURL); err != nil {
+		httpx.WriteError(w, httpx.MapDomainError(err))
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
 }

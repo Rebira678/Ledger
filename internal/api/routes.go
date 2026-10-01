@@ -42,6 +42,7 @@ func (s *Server) Routes(tokens *auth.Tokenizer) http.Handler {
 	mux.Handle("GET /v1/reports/weekly/{report_id}", stdChain(s.handleGetReport))
 	mux.Handle("GET /v1/dashboard/summary", stdChain(s.handleDashboardSummary))
 	mux.Handle("GET /v1/profile", stdChain(s.handleGetProfile))
+	mux.Handle("PATCH /v1/profile", stdChain(s.handleUpdateProfile))
 
 	// Ingestion: JWT + device key, per-device rate limit (contract §1.4).
 	ingestChain := func(h http.HandlerFunc) http.Handler {
