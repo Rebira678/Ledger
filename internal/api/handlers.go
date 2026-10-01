@@ -304,6 +304,7 @@ func (s *Server) handleIngestSMS(w http.ResponseWriter, r *http.Request) {
 		ID: domain.MustNewID("txn"), UserID: ident.UserID, DeviceID: ident.DeviceID,
 		Amount: parsed.Amount, Currency: parsed.Currency, Direction: parsed.Direction,
 		Counterparty: parsed.Counterparty, Source: domain.SourceSMS, OcurredAt: parsed.OccurredAt,
+		Balance: parsed.Balance,
 	}
 	// Categorization (FR-4) before persisting; nil-safe in tests.
 	if s.CategorizeAndQueue != nil {
@@ -663,6 +664,11 @@ func (s *Server) handleDashboardSummary(w http.ResponseWriter, r *http.Request) 
 		httpx.WriteError(w, httpx.MapDomainError(err))
 		return
 	}
+	inc, exp, err := s.Repo.Reports.IncomeAndExpenseForPeriod(ctx, userID, from, to)
+	if err != nil {
+		httpx.WriteError(w, httpx.MapDomainError(err))
+		return
+	}
 
 	// Previous week totals for real WOW computation.
 	prevFrom := weekStart.AddDate(0, 0, -7).Format("2006-01-02T15:04:05Z")
@@ -700,7 +706,8 @@ func (s *Server) handleDashboardSummary(w http.ResponseWriter, r *http.Request) 
 	writeJSON(w, http.StatusOK, map[string]any{
 		"estimated_balance":      bal,
 		"currency":               "ETB",
-		"this_week_spend":        thisWeekTotal,
+		"this_week_income":       inc,
+		"this_week_spend":        exp,
 		"last_week_spend":        lastWeekTotal,
 		"week_over_week_pct":     wowPct,
 		"top_category":           topCat,
@@ -756,3 +763,24 @@ func writeJSON(w http.ResponseWriter, status int, v any) {
 
 // constantTimeEquals is kept for future token comparisons needing subtlety.
 var _ = subtle.ConstantTimeCompare
+
+func (s *Server) handleGetProfile(w http.ResponseWriter, r *http.Request) {
+	userID := MustUserID(r.Context())
+	
+	user, err := s.Repo.Users.GetByID(r.Context(), userID)
+	if err != nil {
+		httpx.WriteError(w, httpx.MapDomainError(err))
+		return
+	}
+
+	devices, err := s.Repo.Devices.ListUserDevices(r.Context(), userID)
+	if err != nil {
+		httpx.WriteError(w, httpx.MapDomainError(err))
+		return
+	}
+
+	writeJSON(w, http.StatusOK, map[string]any{
+		"user": user,
+		"devices": devices,
+	})
+}
