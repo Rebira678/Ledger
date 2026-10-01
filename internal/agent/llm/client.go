@@ -14,6 +14,8 @@ import (
 	"net/http"
 	"strings"
 	"time"
+
+	"github.com/rebira678/ledger/internal/domain"
 )
 
 // ErrNotConfigured is returned when LEDGER_LLM_API_KEY is empty.
@@ -146,6 +148,71 @@ func (c *Client) ParseReceipt(ctx context.Context, base64Image string, mimeType 
 	return &data, nil
 }
 
+// ParseSMS sends an unmatched SMS message to the LLM to extract transaction details.
+func (c *Client) ParseSMS(ctx context.Context, senderID string, body string) (*domain.ParsedTransaction, error) {
+	if !c.Configured() {
+		return nil, ErrNotConfigured
+	}
+
+	systemPrompt := `You are an expert financial transaction parser. You will be given a bank or telecom SMS message that could not be parsed by normal scripts.
+Your task is to extract the following information:
+- amount: (float) the amount of money in the transaction. Must be positive.
+- currency: (string) the currency (e.g. "ETB", "Birr", "USD"). Default to "ETB" if unknown.
+- direction: (string) exactly "credit" if the user received/deposited money, or "debit" if the user sent/spent money.
+- counterparty: (string) the name of the person or business the user sent money to or received money from.
+- reference: (string) the transaction reference or receipt number.
+- balance_units: (integer) the units of the remaining balance (e.g., for 12.34, units=12). Output 0 if not present.
+- balance_cents: (integer) the cents of the remaining balance (e.g., for 12.34, cents=34). Output 0 if not present.
+
+Return ONLY a valid JSON object matching this schema. No markdown formatting.
+Schema: {"amount": 123.45, "currency": "ETB", "direction": "debit", "counterparty": "Alemayehu", "reference": "TXN123", "balance_units": 450, "balance_cents": 50}`
+
+	userPrompt := fmt.Sprintf("Sender: %s\nMessage: %s", senderID, body)
+
+	respStr, err := c.Chat(ctx, systemPrompt, userPrompt)
+	if err != nil {
+		return nil, err
+	}
+
+	respStr = strings.TrimPrefix(respStr, "```json")
+	respStr = strings.TrimPrefix(respStr, "```")
+	respStr = strings.TrimSuffix(respStr, "```")
+	respStr = strings.TrimSpace(respStr)
+
+	var data struct {
+		Amount       float64 `json:"amount"`
+		Currency     string  `json:"currency"`
+		Direction    string  `json:"direction"`
+		Counterparty string  `json:"counterparty"`
+		Reference    string  `json:"reference"`
+		BalanceUnits int64   `json:"balance_units"`
+		BalanceCents int64   `json:"balance_cents"`
+	}
+	if err := json.Unmarshal([]byte(respStr), &data); err != nil {
+		return nil, fmt.Errorf("llm: failed to decode sms JSON (%w): raw text: %q", err, respStr)
+	}
+
+	money, _ := domain.ParseMoney(fmt.Sprintf("%.2f", data.Amount))
+	dir := domain.DirectionDebit
+	if strings.ToLower(data.Direction) == "credit" {
+		dir = domain.DirectionCredit
+	}
+	
+	var bal *domain.Money
+	if data.BalanceUnits > 0 || data.BalanceCents > 0 {
+		bal = &domain.Money{Units: data.BalanceUnits, Cents: data.BalanceCents}
+	}
+
+	return &domain.ParsedTransaction{
+		Amount:       money,
+		Currency:     data.Currency,
+		Direction:    dir,
+		Counterparty: data.Counterparty,
+		Reference:    data.Reference,
+		Balance:      bal,
+	}, nil
+}
+
 func (c *Client) doReq(ctx context.Context, reqBody []byte) (string, error) {
 	return c.doReqWithClient(ctx, reqBody, c.httpClient)
 }
@@ -208,6 +275,7 @@ func (c *Client) doReqWithClient(ctx context.Context, reqBody []byte, client *ht
 		}
 
 		var parsed chatResponse
+		fmt.Printf("DEBUG Chat raw response: %s\n", string(bodyBytes))
 		if err := json.Unmarshal(bodyBytes, &parsed); err != nil {
 			return "", fmt.Errorf("llm: decoding response: %w", err)
 		}
