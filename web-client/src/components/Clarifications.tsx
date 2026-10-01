@@ -35,7 +35,7 @@ export function Clarifications() {
           'Authorization': `Bearer ${localStorage.getItem('token')}`,
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify({ response: responseText })
+        body: JSON.stringify({ answer: responseText })
       });
       if (res.ok) {
         setClars(clars.filter(c => c.id !== id));
