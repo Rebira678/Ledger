@@ -93,6 +93,7 @@ type Transaction struct {
 	CategoryHasConfidence bool
 	CategorySource        string // "system" | "user" | ""
 	Source                Source
+	Balance               *Money
 	OcurredAt             time.Time
 	CreatedAt             time.Time
 }
@@ -120,6 +121,7 @@ type ParsedTransaction struct {
 	Counterparty string
 	OccurredAt   time.Time
 	Reference    string
+	Balance      *Money
 }
 
 // StatementUpload is an uploaded PDF/CSV statement (FR-7).
