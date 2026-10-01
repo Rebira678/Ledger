@@ -30,15 +30,19 @@ func (r *TxnRepo) InsertTxn(ctx context.Context, db DB, t *domain.Transaction) e
 	if db != nil {
 		exec = db
 	}
+	var bal interface{}
+	if t.Balance != nil {
+		bal = t.Balance.String()
+	}
 	row := exec.QueryRowContext(ctx,
 		`INSERT INTO transactions
 		 (id, user_id, device_id, amount, currency, direction, counterparty,
-		  category, category_confidence, category_source, source, occurred_at)
-		 VALUES ($1,$2,NULLIF($3,''),$4,$5,$6,$7,$8,$9,$10,$11,$12)
+		  category, category_confidence, category_source, source, occurred_at, balance)
+		 VALUES ($1,$2,NULLIF($3,''),$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)
 		 RETURNING created_at`,
 		t.ID, t.UserID, t.DeviceID, t.Amount.String(), t.Currency, string(t.Direction),
 		t.Counterparty, t.Category, t.CategoryConfidence, t.CategorySource,
-		string(t.Source), t.OcurredAt)
+		string(t.Source), t.OcurredAt, bal)
 	if err := row.Scan(&t.CreatedAt); err != nil {
 		return wrap("inserting transaction", mapPgError(err))
 	}
@@ -81,7 +85,7 @@ func (r *TxnRepo) ListTxns(ctx context.Context, f TxnListFilter) ([]*domain.Tran
 	}
 	q := `SELECT id, user_id, coalesce(device_id,''), amount::text, currency, direction,
 	             coalesce(counterparty,''), coalesce(category,''), category_confidence,
-	             coalesce(category_source,''), source, occurred_at, created_at
+	             coalesce(category_source,''), source, occurred_at, created_at, balance::text
 	      FROM transactions
 	      WHERE ` + strings.Join(where, " AND ") + `
 	      ORDER BY occurred_at DESC, id DESC
@@ -99,9 +103,10 @@ func (r *TxnRepo) ListTxns(ctx context.Context, f TxnListFilter) ([]*domain.Tran
 		var amount string
 		var conf sql.NullFloat64
 		var src sql.NullString
+		var bal sql.NullString
 		if err := rows.Scan(&t.ID, &t.UserID, &t.DeviceID, &amount, &t.Currency,
 			&t.Direction, &t.Counterparty, &t.Category, &conf, &src, &t.Source,
-			&t.OcurredAt, &t.CreatedAt); err != nil {
+			&t.OcurredAt, &t.CreatedAt, &bal); err != nil {
 			return nil, "", wrap("scanning transaction row", err)
 		}
 		amt, perr := domain.ParseMoney(amount)
@@ -109,6 +114,11 @@ func (r *TxnRepo) ListTxns(ctx context.Context, f TxnListFilter) ([]*domain.Tran
 			return nil, "", wrap("parsing amount from db", perr)
 		}
 		t.Amount = amt
+		if bal.Valid && bal.String != "" {
+			if b, err := domain.ParseMoney(bal.String); err == nil {
+				t.Balance = &b
+			}
+		}
 		t.CategoryConfidence = conf.Float64
 		t.CategoryHasConfidence = conf.Valid
 		t.CategorySource = src.String
@@ -131,14 +141,15 @@ func (r *TxnRepo) GetTxn(ctx context.Context, userID, txnID string) (*domain.Tra
 	row := r.db.QueryRowContext(ctx,
 		`SELECT id, user_id, coalesce(device_id,''), amount::text, currency, direction,
 		        coalesce(counterparty,''), coalesce(category,''), category_confidence,
-		        coalesce(category_source,''), source, occurred_at, created_at
+		        coalesce(category_source,''), source, occurred_at, created_at, balance::text
 		 FROM transactions WHERE id = $1 AND user_id = $2`, txnID, userID)
 	t := &domain.Transaction{}
 	var amount string
 	var conf sql.NullFloat64
 	var src sql.NullString
+	var bal sql.NullString
 	if err := row.Scan(&t.ID, &t.UserID, &t.DeviceID, &amount, &t.Currency, &t.Direction,
-		&t.Counterparty, &t.Category, &conf, &src, &t.Source, &t.OcurredAt, &t.CreatedAt); err != nil {
+		&t.Counterparty, &t.Category, &conf, &src, &t.Source, &t.OcurredAt, &t.CreatedAt, &bal); err != nil {
 		return nil, notFound("getting transaction", err)
 	}
 	amt, err := domain.ParseMoney(amount)
@@ -146,6 +157,11 @@ func (r *TxnRepo) GetTxn(ctx context.Context, userID, txnID string) (*domain.Tra
 		return nil, wrap("parsing amount from db", err)
 	}
 	t.Amount = amt
+	if bal.Valid && bal.String != "" {
+		if b, err := domain.ParseMoney(bal.String); err == nil {
+			t.Balance = &b
+		}
+	}
 	t.CategoryConfidence = conf.Float64
 	t.CategoryHasConfidence = conf.Valid
 	t.CategorySource = src.String
