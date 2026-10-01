@@ -1,7 +1,10 @@
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Smartphone, Zap, ArrowRight, Database, Key, ShieldCheck, LayoutDashboard, Receipt, UploadCloud, MessageSquareWarning, BarChart3 } from 'lucide-react';
+import { Smartphone, Zap, ArrowRight, Database, Key, ShieldCheck, LayoutDashboard, Receipt, UploadCloud, MessageSquareWarning, BarChart3, Menu, X } from 'lucide-react';
 
 export function Landing() {
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+
   return (
     <div className="landing-container">
       <div className="landing-bg-grid" />
@@ -17,7 +20,10 @@ export function Landing() {
           </div>
           Ledger
         </div>
-        <div className="landing-nav-links">
+        <button className="mobile-menu-btn" onClick={() => setIsMenuOpen(!isMenuOpen)}>
+          {isMenuOpen ? <X size={24} /> : <Menu size={24} />}
+        </button>
+        <div className={`landing-nav-links ${isMenuOpen ? 'mobile-open' : ''}`}>
           <a href="https://github.com/Rebira678/Ledger" target="_blank" rel="noreferrer" className="nav-link-ghost">Documentation</a>
           <Link to="/login" className="nav-link-ghost">Log in</Link>
           <Link to="/register" className="nav-link-primary">Get Started</Link>
