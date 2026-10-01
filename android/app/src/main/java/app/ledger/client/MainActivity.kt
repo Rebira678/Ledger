@@ -30,60 +30,125 @@ class MainActivity : AppCompatActivity() {
     private val ui by lazy {
         LinearLayout(this).apply { 
             orientation = LinearLayout.VERTICAL
-            setPadding(48, 96, 48, 48)
-            setBackgroundColor(android.graphics.Color.parseColor("#000000"))
+            setPadding(64, 128, 64, 64)
+            setBackgroundColor(android.graphics.Color.parseColor("#050505"))
         }
     }
 
     private fun getBentoBackground() = android.graphics.drawable.GradientDrawable().apply {
-        setColor(android.graphics.Color.parseColor("#050505"))
-        setStroke(2, android.graphics.Color.parseColor("#262626"))
-        cornerRadius = 32f
+        setColor(android.graphics.Color.parseColor("#0f0f11"))
+        setStroke(3, android.graphics.Color.parseColor("#27272a"))
+        cornerRadius = 64f
     }
     
     private fun getButtonBackground() = android.graphics.drawable.GradientDrawable().apply {
         setColor(android.graphics.Color.parseColor("#ededed"))
-        cornerRadius = 16f
+        cornerRadius = 64f
     }
     
     private fun getInputBackground() = android.graphics.drawable.GradientDrawable().apply {
-        setColor(android.graphics.Color.parseColor("#000000"))
-        setStroke(2, android.graphics.Color.parseColor("#404040"))
-        cornerRadius = 16f
+        setColor(android.graphics.Color.parseColor("#0a0a0a"))
+        setStroke(2, android.graphics.Color.parseColor("#262626"))
+        cornerRadius = 32f
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        if (hasSmsPermissions()) {
-            renderMain()
-        } else {
-            renderRationale()
-        }
+        renderWebView()
         setContentView(ui)
     }
 
-    // FR-1.1 / US-6: explicit plain-language rationale BEFORE the OS prompt.
-    private fun renderRationale() {
+    inner class WebAppInterface {
+        @android.webkit.JavascriptInterface
+        fun onLogin(email: String, pass: String, token: String) {
+            val isPaired = DeviceCredentials.load(this@MainActivity) != null
+            if (!isPaired) {
+                CoroutineScope(Dispatchers.Main).launch {
+                    pairDeviceBackground(email, pass, token)
+                }
+            } else if (!hasSmsPermissions()) {
+                requestSmsPermissions()
+            }
+        }
+    }
+
+    private suspend fun pairDeviceBackground(email: String, pass: String, token: String) {
+        withContext(Dispatchers.IO) {
+            try {
+                val api = ApiClient.instance(DeviceCredentials.defaultBaseUrl())
+                val pair = api.pair(
+                    "Bearer $token",
+                    PairRequest(android.os.Build.MODEL, android.os.Build.VERSION.RELEASE)
+                )
+                if (pair.isSuccessful) {
+                    val pairBody = pair.body()!!
+                    DeviceCredentials.store(
+                        this@MainActivity,
+                        DeviceCredentials.defaultBaseUrl(),
+                        token, "dummy_refresh", // web app handles refresh
+                        pairBody.device_api_key, email, pass
+                    )
+                    withContext(Dispatchers.Main) {
+                        if (!hasSmsPermissions()) {
+                            requestSmsPermissions()
+                        } else {
+                            showWebNotification("Android SMS Agent Active", false)
+                        }
+                    }
+                }
+            } catch (e: Exception) {
+                // ignore in UI, agent pairing failed
+            }
+        }
+    }
+
+    private fun renderWebView() {
         ui.removeAllViews()
-        val title = TextView(this).apply {
-            text = getString(R.string.rationale_title)
-            textSize = 24f
-            setTextColor(android.graphics.Color.parseColor("#ffffff"))
-            setTypeface(null, android.graphics.Typeface.BOLD)
+        ui.setPadding(0, 0, 0, 0)
+        
+        val webView = android.webkit.WebView(this).apply {
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT, 
+                LinearLayout.LayoutParams.MATCH_PARENT
+            )
+            settings.javaScriptEnabled = true
+            settings.domStorageEnabled = true
+            settings.mixedContentMode = android.webkit.WebSettings.MIXED_CONTENT_ALWAYS_ALLOW
+            
+            addJavascriptInterface(WebAppInterface(), "Android")
+            
+            webViewClient = object : android.webkit.WebViewClient() {
+                override fun onPageFinished(view: android.webkit.WebView, url: String) {
+                    super.onPageFinished(view, url)
+                    val js = """
+                        if (!window.androidInjected) {
+                            window.androidInjected = true;
+                            const originalFetch = window.fetch;
+                            window.fetch = async function(...args) {
+                                const response = await originalFetch.apply(this, args);
+                                if (args[0] && args[0].includes('/v1/auth/login') && response.ok) {
+                                    try {
+                                        const clone = response.clone();
+                                        const data = await clone.json();
+                                        const reqBody = JSON.parse(args[1].body);
+                                        Android.onLogin(reqBody.email, reqBody.password, data.access_token);
+                                    } catch(e) {}
+                                }
+                                return response;
+                            };
+                            
+                            var existing = localStorage.getItem('token');
+                            if (existing) {
+                                Android.onLogin('existing@user', 'dummy', existing);
+                            }
+                        }
+                    """.trimIndent()
+                    view.evaluateJavascript(js, null)
+                }
+            }
         }
-        val body = TextView(this).apply {
-            text = getString(R.string.rationale_body)
-            textSize = 15f
-            setPadding(0, 32, 0, 64)
-            setTextColor(android.graphics.Color.parseColor("#a3a3a3"))
-        }
-        val grant = Button(this).apply {
-            text = getString(R.string.rationale_button)
-            setTextColor(android.graphics.Color.parseColor("#000000"))
-            background = getButtonBackground()
-            setOnClickListener { requestSmsPermissions() }
-        }
-        ui.addView(title); ui.addView(body); ui.addView(grant)
+        ui.addView(webView)
+        webView.loadUrl(DeviceCredentials.defaultBaseUrl())
     }
 
     private fun hasSmsPermissions() =
@@ -100,134 +165,18 @@ class MainActivity : AppCompatActivity() {
 
     override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        // If they just granted permissions, we can just show a toast or notification over the WebView!
         if (requestCode == REQ_SMS) {
             if (grantResults.isNotEmpty() && grantResults.all { it == PackageManager.PERMISSION_GRANTED }) {
-                renderMain()
+                Toast.makeText(this, "SMS Agent Connected", Toast.LENGTH_SHORT).show()
             } else {
-                Toast.makeText(this, R.string.permission_denied, Toast.LENGTH_LONG).show()
-                renderRationale()
+                Toast.makeText(this, "SMS Permission Denied - Sync disabled", Toast.LENGTH_LONG).show()
             }
         }
     }
 
-    private fun renderMain() {
-        ui.removeAllViews()
-
-        val status = TextView(this).apply {
-            val isPaired = DeviceCredentials.load(this@MainActivity) != null
-            text = if (isPaired) getString(R.string.status_paired) else getString(R.string.status_not_paired)
-            textSize = 14f
-            setTextColor(android.graphics.Color.parseColor(if (isPaired) "#10b981" else "#ef4444"))
-            setPadding(0, 0, 0, 48)
-            setTypeface(null, android.graphics.Typeface.BOLD)
-        }
-
-        val emailField = android.widget.EditText(this).apply {
-            hint = getString(R.string.hint_email)
-            setHintTextColor(android.graphics.Color.parseColor("#737373"))
-            setTextColor(android.graphics.Color.parseColor("#ffffff"))
-            background = getInputBackground()
-            setPadding(40, 32, 40, 32)
-            layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply {
-                setMargins(0, 0, 0, 24)
-            }
-        }
-        val passField = android.widget.EditText(this).apply {
-            hint = getString(R.string.hint_password)
-            setHintTextColor(android.graphics.Color.parseColor("#737373"))
-            setTextColor(android.graphics.Color.parseColor("#ffffff"))
-            background = getInputBackground()
-            setPadding(40, 32, 40, 32)
-            transformationMethod = android.text.method.PasswordTransformationMethod.getInstance()
-            layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply {
-                setMargins(0, 0, 0, 48)
-            }
-        }
-        val loginBtn = Button(this).apply {
-            text = getString(R.string.button_login)
-            setTextColor(android.graphics.Color.parseColor("#000000"))
-            background = getButtonBackground()
-            setOnClickListener {
-                CoroutineScope(Dispatchers.Main).launch { loginAndPair(emailField.text.toString(), passField.text.toString()) }
-            }
-        }
-
-        val bentoBox = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            background = getBentoBackground()
-            setPadding(48, 48, 48, 48)
-            layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply {
-                setMargins(0, 64, 0, 0)
-            }
-        }
-
-        val allowTitle = TextView(this).apply {
-            text = getString(R.string.allowlist_title)
-            setPadding(0, 0, 0, 16)
-            textSize = 16f
-            setTextColor(android.graphics.Color.parseColor("#ffffff"))
-            setTypeface(null, android.graphics.Typeface.BOLD)
-        }
-        val allowList = TextView(this).apply {
-            text = AllowList.current(this@MainActivity).joinToString("\n") { "• $it" }
-            textSize = 14f
-            setTextColor(android.graphics.Color.parseColor("#a3a3a3"))
-        }
-        val logTitle = TextView(this).apply {
-            text = getString(R.string.capture_log_title)
-            setPadding(0, 64, 0, 16)
-            textSize = 16f
-            setTextColor(android.graphics.Color.parseColor("#ffffff"))
-            setTypeface(null, android.graphics.Typeface.BOLD)
-        }
-        val logView = TextView(this).apply {
-            text = CaptureLog.entries(this@MainActivity).takeLast(10).joinToString("\n\n")
-            textSize = 12f
-            setTextColor(android.graphics.Color.parseColor("#737373"))
-        }
-
-        bentoBox.addView(allowTitle); bentoBox.addView(allowList)
-        bentoBox.addView(logTitle); bentoBox.addView(logView)
-
-        ui.addView(status)
-        if (DeviceCredentials.load(this@MainActivity) == null) {
-            ui.addView(emailField); ui.addView(passField); ui.addView(loginBtn)
-        }
-        ui.addView(bentoBox)
-    }
-
-    private suspend fun loginAndPair(email: String, password: String) {
-        withContext(Dispatchers.IO) {
-            try {
-                val api = ApiClient.instance(DeviceCredentials.defaultBaseUrl())
-                val login = api.login(LoginRequest(email, password))
-                if (!login.isSuccessful) {
-                    withContext(Dispatchers.Main) { Toast.makeText(this@MainActivity, R.string.login_failed, Toast.LENGTH_LONG).show() }
-                    return@withContext
-                }
-                val tokens = login.body()!!
-                val pair = api.pair(
-                    "Bearer ${tokens.access_token}",
-                    PairRequest(android.os.Build.MODEL, android.os.Build.VERSION.RELEASE),
-                )
-                if (!pair.isSuccessful) {
-                    withContext(Dispatchers.Main) { Toast.makeText(this@MainActivity, R.string.pair_failed, Toast.LENGTH_LONG).show() }
-                    return@withContext
-                }
-                DeviceCredentials.store(
-                    this@MainActivity,
-                    DeviceCredentials.defaultBaseUrl(),
-                    tokens.access_token, tokens.refresh_token,
-                    pair.body()!!.device_api_key, email, password,
-                )
-                withContext(Dispatchers.Main) {
-                    Toast.makeText(this@MainActivity, R.string.pair_ok, Toast.LENGTH_SHORT).show()
-                    renderMain()
-                }
-            } catch (e: java.io.IOException) {
-                withContext(Dispatchers.Main) { Toast.makeText(this@MainActivity, R.string.network_error, Toast.LENGTH_LONG).show() }
-            }
-        }
+    private fun showWebNotification(message: String, isError: Boolean = false) {
+        Toast.makeText(this, message, Toast.LENGTH_SHORT).show()
     }
 
     companion object {

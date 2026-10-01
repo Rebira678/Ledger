@@ -76,6 +76,6 @@ data class DeviceCredentials(
         fun storedEmail(context: Context): String? = prefs(context).getString("email", null)
         fun storedPassword(context: Context): String? = prefs(context).getString("password", null)
 
-        fun defaultBaseUrl(): String = "https://api.ledger.app/"
+        fun defaultBaseUrl(): String = "http://192.168.1.11:8080/"
     }
 }

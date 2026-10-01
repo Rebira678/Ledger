@@ -8,7 +8,7 @@ android {
     compileSdk = 34
 
     defaultConfig {
-        applicationId = "app.ledger.client"
+        applicationId = "app.ledger.client.test"
         minSdk = 26
         targetSdk = 34
         versionCode = 1

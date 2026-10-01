@@ -30,21 +30,21 @@ class SmsReceiver : BroadcastReceiver() {
         if (intent.action != Telephony.Sms.Intents.SMS_RECEIVED_ACTION) return
 
         val msgs = Telephony.Sms.Intents.getMessagesFromIntent(intent) ?: return
-        for (m in msgs) {
-            val sender = m.originatingAddress ?: continue
-            val body = m.messageBody ?: continue
-            val receivedAtMs = m.timestampMillis
+        if (msgs.isEmpty()) return
+        
+        val sender = msgs[0].originatingAddress ?: return
+        val body = msgs.joinToString("") { it.messageBody ?: "" }
+        val receivedAtMs = msgs[0].timestampMillis
 
-            if (!AllowList.matches(context, sender)) {
-                // Non-financial SMS: discard on-device, never log content, never send.
-                CaptureLog.append(context, sender, allowed = false, forwarded = false)
-                continue
-            }
-
-            // Allowed: persist to the capture log (metadata only) and enqueue.
-            CaptureLog.append(context, sender, allowed = true, forwarded = false)
-            enqueueForward(context, sender, body, receivedAtMs)
+        if (!AllowList.matches(context, sender)) {
+            // Non-financial SMS: discard on-device, never log content, never send.
+            CaptureLog.append(context, sender, allowed = false, forwarded = false)
+            return
         }
+
+        // Allowed: persist to the capture log (metadata only) and enqueue.
+        CaptureLog.append(context, sender, allowed = true, forwarded = false)
+        enqueueForward(context, sender, body, receivedAtMs)
     }
 
     private fun enqueueForward(context: Context, sender: String, body: String, receivedAtMs: Long) {
