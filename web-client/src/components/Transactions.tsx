@@ -25,7 +25,7 @@ export function Transactions() {
         });
         if (res.ok) {
           const data = await res.json();
-          const mapped = (data.transactions || []).map((t: any) => ({
+          const mapped = (data.items || []).map((t: any) => ({
             id: t.transaction_id,
             date: t.occurred_at,
             counterparty: t.counterparty,
@@ -91,10 +91,13 @@ export function Transactions() {
               <div key={t.id} style={{ padding: '16px', borderBottom: '1px solid var(--border-subtle)', display: 'flex', flexDirection: 'column', gap: '12px' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                   <div>
-                    <div style={{ fontWeight: 500, color: 'var(--text-primary)' }}>{t.counterparty}</div>
-                    <div style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>{new Date(t.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <span style={{ fontWeight: 500, color: 'var(--text-primary)' }}>{t.counterparty}</span>
+                      <span className={`badge ${t.direction === 'credit' ? 'success' : 'danger'}`} style={{ fontSize: '0.65rem', padding: '2px 6px', textTransform: 'capitalize' }}>{t.direction}</span>
+                    </div>
+                    <div style={{ color: 'var(--text-muted)', fontSize: '0.75rem', marginTop: '4px' }}>{new Date(t.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</div>
                   </div>
-                  <div className="tabular-data" style={{ fontWeight: 500, color: t.direction === 'credit' ? 'var(--status-success)' : 'var(--text-primary)' }}>
+                  <div className="tabular-data" style={{ fontWeight: 500, color: t.direction === 'credit' ? 'var(--status-success)' : 'var(--status-danger)' }}>
                     {t.direction === 'credit' ? '+' : '−'}{t.amount.toLocaleString(undefined, { minimumFractionDigits: 2 })}
                   </div>
                 </div>
@@ -126,6 +129,7 @@ export function Transactions() {
                 <tr>
                   <th>Date</th>
                   <th>Counterparty</th>
+                  <th>Type</th>
                   <th style={{ textAlign: 'right' }}>Amount (ETB)</th>
                   <th>Category</th>
                   <th style={{ textAlign: 'right' }}>Action</th>
@@ -136,7 +140,12 @@ export function Transactions() {
                   <tr key={t.id}>
                     <td style={{ color: 'var(--text-muted)' }}>{new Date(t.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</td>
                     <td style={{ fontWeight: 500, color: 'var(--text-primary)' }}>{t.counterparty}</td>
-                    <td className="tabular-data" style={{ textAlign: 'right', fontWeight: 500, color: t.direction === 'credit' ? 'var(--status-success)' : 'var(--text-primary)' }}>
+                    <td>
+                      <span className={`badge ${t.direction === 'credit' ? 'success' : 'danger'}`} style={{ textTransform: 'capitalize' }}>
+                        {t.direction}
+                      </span>
+                    </td>
+                    <td className="tabular-data" style={{ textAlign: 'right', fontWeight: 500, color: t.direction === 'credit' ? 'var(--status-success)' : 'var(--status-danger)' }}>
                       {t.direction === 'credit' ? '+' : '−'}{t.amount.toLocaleString(undefined, { minimumFractionDigits: 2 })}
                     </td>
                     <td>
