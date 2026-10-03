@@ -37,7 +37,19 @@ export function Upload() {
 
       if (!response.ok) {
         const errData = await response.json().catch(() => ({}));
-        const serverError = errData.error?.message || errData.message || 'Upload failed';
+        let serverError = errData.error?.message || errData.message || 'Upload failed';
+        
+        // Translate technical backend errors into user-friendly messages
+        if (serverError.includes('Incorrect API key') || serverError.includes('status 401')) {
+          serverError = 'Invalid AI API Key. Please check your LLM provider settings.';
+        } else if (serverError.includes('llm: not configured')) {
+          serverError = 'AI parsing is currently disabled. Please configure your LLM API key.';
+        } else if (serverError.includes('llm:')) {
+          serverError = 'The AI parsing service is temporarily unavailable. Please try again later.';
+        } else if (serverError.includes('exceeds size limit')) {
+          serverError = 'The uploaded file is too large. Please upload a file smaller than 10MB.';
+        }
+        
         throw new Error(serverError);
       }
 
