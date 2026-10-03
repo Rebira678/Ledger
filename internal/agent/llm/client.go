@@ -197,7 +197,7 @@ Schema: {"amount": 123.45, "currency": "ETB", "direction": "debit", "counterpart
 	if strings.ToLower(data.Direction) == "credit" {
 		dir = domain.DirectionCredit
 	}
-	
+
 	var bal *domain.Money
 	if data.BalanceUnits > 0 || data.BalanceCents > 0 {
 		bal = &domain.Money{Units: data.BalanceUnits, Cents: data.BalanceCents}

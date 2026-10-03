@@ -117,7 +117,7 @@ func parseTelebirrTimestamp(m []string) (time.Time, error) {
 	p1, _ := strconv.Atoi(m[1])
 	p2, _ := strconv.Atoi(m[2])
 	p3, _ := strconv.Atoi(m[3])
-	
+
 	var year, month, day int
 	if len(m[1]) == 4 { // YYYY-MM-DD
 		year, month, day = p1, p2, p3

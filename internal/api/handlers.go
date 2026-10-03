@@ -313,7 +313,6 @@ func (s *Server) handleIngestSMS(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-
 	txn := &domain.Transaction{
 		ID: domain.MustNewID("txn"), UserID: ident.UserID, DeviceID: ident.DeviceID,
 		Amount: parsed.Amount, Currency: parsed.Currency, Direction: parsed.Direction,
@@ -780,7 +779,7 @@ var _ = subtle.ConstantTimeCompare
 
 func (s *Server) handleGetProfile(w http.ResponseWriter, r *http.Request) {
 	userID := MustUserID(r.Context())
-	
+
 	user, err := s.Repo.Users.GetByID(r.Context(), userID)
 	if err != nil {
 		httpx.WriteError(w, httpx.MapDomainError(err))
@@ -794,7 +793,7 @@ func (s *Server) handleGetProfile(w http.ResponseWriter, r *http.Request) {
 	}
 
 	writeJSON(w, http.StatusOK, map[string]any{
-		"user": user,
+		"user":    user,
 		"devices": devices,
 	})
 }
