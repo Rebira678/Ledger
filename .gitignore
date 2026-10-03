@@ -36,3 +36,6 @@ android/local.properties
 
 # Extracted PDF scripts are fine to keep, but any extracted local output goes here
 /scripts/out/
+
+# Ignore scratchpad directory
+scratch/
