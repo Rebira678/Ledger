@@ -39,15 +39,13 @@ export function Upload() {
         const errData = await response.json().catch(() => ({}));
         let serverError = errData.error?.message || errData.message || 'Upload failed';
         
-        // Translate technical backend errors into user-friendly messages
-        if (serverError.includes('Incorrect API key') || serverError.includes('status 401')) {
-          serverError = 'Invalid AI API Key. Please check your LLM provider settings.';
-        } else if (serverError.includes('llm: not configured')) {
-          serverError = 'AI parsing is currently disabled. Please configure your LLM API key.';
-        } else if (serverError.includes('llm:')) {
-          serverError = 'The AI parsing service is temporarily unavailable. Please try again later.';
-        } else if (serverError.includes('exceeds size limit')) {
+        // Abstract away backend implementation details for the end-user
+        if (serverError.includes('exceeds size limit') || serverError.includes('too large')) {
           serverError = 'The uploaded file is too large. Please upload a file smaller than 10MB.';
+        } else if (serverError.includes('llm:') || serverError.includes('status 401') || serverError.includes('API key')) {
+          serverError = 'Our automated receipt processing service is currently unavailable. Please try again later.';
+        } else {
+          serverError = 'An unexpected error occurred while processing your file. Please try again.';
         }
         
         throw new Error(serverError);
