@@ -65,9 +65,9 @@ func (r *UserRepo) GetByEmail(ctx context.Context, email string) (*domain.User, 
 // GetByID returns a user by id.
 func (r *UserRepo) GetByID(ctx context.Context, id string) (*domain.User, error) {
 	row := r.db.QueryRowContext(ctx,
-		`SELECT id, email, created_at FROM users WHERE id = $1`, id)
+		`SELECT id, email, display_name, avatar_url, created_at FROM users WHERE id = $1`, id)
 	var u domain.User
-	err := row.Scan(&u.ID, &u.Email, &u.CreatedAt)
+	err := row.Scan(&u.ID, &u.Email, &u.DisplayName, &u.AvatarURL, &u.CreatedAt)
 	if err != nil {
 		return nil, notFound("getting user by id", err)
 	}
