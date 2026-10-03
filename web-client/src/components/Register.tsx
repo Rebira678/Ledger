@@ -19,9 +19,20 @@ export function Register() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password })
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error?.message || 'Registration failed');
-      
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        let errorMsg = data.error?.message || data.message || 'Registration failed';
+        if (errorMsg.includes('internal server error') || errorMsg.includes('database')) {
+          errorMsg = 'Our system is experiencing a temporary issue. Please try again later.';
+        } else if (errorMsg.includes('already registered') || errorMsg.includes('duplicate')) {
+          errorMsg = 'An account with this email already exists.';
+        } else if (errorMsg.includes('password must be at least')) {
+          errorMsg = 'Your password must be at least 8 characters long.';
+        } else {
+          errorMsg = 'Unable to create your account. Please check your details and try again.';
+        }
+        throw new Error(errorMsg);
+      }
       localStorage.setItem('token', data.access_token);
       navigate('/dashboard');
     } catch (err: any) {

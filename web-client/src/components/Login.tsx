@@ -19,9 +19,18 @@ export function Login() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password })
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error?.message || 'Login failed');
-      
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        let errorMsg = data.error?.message || data.message || 'Login failed';
+        if (errorMsg.includes('internal server error') || errorMsg.includes('database')) {
+          errorMsg = 'Our system is experiencing a temporary issue. Please try again later.';
+        } else if (errorMsg.includes('credentials') || errorMsg.includes('UNAUTHENTICATED')) {
+          errorMsg = 'Incorrect email or password.';
+        } else {
+          errorMsg = 'Unable to sign in. Please check your details and try again.';
+        }
+        throw new Error(errorMsg);
+      }
       localStorage.setItem('token', data.access_token);
       navigate('/dashboard');
     } catch (err: any) {
