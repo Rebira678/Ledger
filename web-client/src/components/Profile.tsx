@@ -20,7 +20,10 @@ export function Profile() {
     })
     .then(r => {
       if (!r.ok) {
-        if (r.status === 401) navigate('/login');
+        if (r.status === 401) {
+          localStorage.removeItem('token');
+          navigate('/login');
+        }
         throw new Error('Failed to fetch profile');
       }
       return r.json();

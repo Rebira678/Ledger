@@ -45,9 +45,12 @@ function Sidebar({ isOpen, setIsOpen }: { isOpen: boolean, setIsOpen: (val: bool
         <NavLink to="/profile" className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}>
           <User size={18} /> Profile
         </NavLink>
+        
+        {/* Spacer to prevent accidental clicks on mobile */}
+        <div style={{ flex: 1, minHeight: '40px' }}></div>
       </div>
 
-      <button onClick={handleLogout} className="nav-link" style={{ background: 'transparent', border: 'none', color: 'var(--status-danger)', width: '100%', justifyContent: 'flex-start', boxShadow: 'none', paddingLeft: '8px' }}>
+      <button onClick={handleLogout} className="nav-link" style={{ background: 'transparent', borderTop: '1px solid rgba(255,255,255,0.05)', color: 'var(--status-danger)', width: '100%', justifyContent: 'flex-start', boxShadow: 'none', padding: '16px 12px', marginTop: 'auto', cursor: 'pointer', borderRadius: 0 }}>
         <LogOut size={18} /> Log out
       </button>
     </div>
