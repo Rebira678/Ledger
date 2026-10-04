@@ -68,7 +68,7 @@ func newTestServer(t *testing.T) (*httptest.Server, *api.Server) {
 	engine := categorize.NewEngine(r.Rules)
 	orch := agent.New(engine, llm.New("", "", "", time.Second))
 
-	srv := api.New(r, tok, registry, api.Config{
+	srv := api.New(r, tok, registry, nil, api.Config{
 		MaxStatementBytes: 10 << 20, RateIngestPerMin: 120, RateUserPerMin: 60, RefreshTTLSeconds: 3600,
 	})
 	srv = newWired(srv, r, orch)

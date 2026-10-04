@@ -22,6 +22,7 @@ import (
 	"github.com/rebira678/ledger/internal/domain"
 	"github.com/rebira678/ledger/internal/httpx"
 	"github.com/rebira678/ledger/internal/loggerx"
+	"github.com/rebira678/ledger/internal/mail"
 	"github.com/rebira678/ledger/internal/parsers"
 	"github.com/rebira678/ledger/internal/repo"
 )
@@ -68,8 +69,17 @@ func run() error {
 	engine := categorize.NewEngine(r.Rules)
 	orch := agent.New(engine, llmClient)
 
+	// Mailer
+	mailer := mail.NewSMTPSender(mail.Config{
+		Host:     cfg.SMTPHost,
+		Port:     cfg.SMTPPort,
+		Username: cfg.SMTPUser,
+		Password: cfg.SMTPPass,
+		From:     cfg.SMTPFrom,
+	})
+
 	srv := &api.Server{
-		Repo: r, Tokens: tokenizer, Parser: registry,
+		Repo: r, Tokens: tokenizer, Parser: registry, Mailer: mailer,
 		Env: cfg.Env,
 		Cfg: api.Config{
 			MaxStatementBytes: cfg.MaxStatementBytes,

@@ -36,6 +36,12 @@ type Config struct {
 	CORSOrigins []string
 
 	TemplatesDir string
+
+	SMTPHost string
+	SMTPPort string
+	SMTPUser string
+	SMTPPass string
+	SMTPFrom string
 }
 
 func getEnv(key, def string) string {
@@ -83,6 +89,12 @@ func Load() (*Config, error) {
 		ReportCron:     getEnv("LEDGER_REPORT_CRON", "0 6 * * 1"),
 		ReportTimezone: getEnv("LEDGER_REPORT_TIMEZONE", "Africa/Addis_Ababa"),
 		TemplatesDir:   getEnv("LEDGER_TEMPLATES_DIR", "web/templates"),
+
+		SMTPHost: getEnv("LEDGER_SMTP_HOST", ""),
+		SMTPPort: getEnv("LEDGER_SMTP_PORT", "587"),
+		SMTPUser: getEnv("LEDGER_SMTP_USER", ""),
+		SMTPPass: getEnv("LEDGER_SMTP_PASS", ""),
+		SMTPFrom: getEnv("LEDGER_SMTP_FROM", "noreply@ledger.local"),
 	}
 
 	var err error

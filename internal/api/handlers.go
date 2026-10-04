@@ -5,6 +5,7 @@ import (
 	"crypto/subtle"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"net/http"
 	"regexp"
@@ -14,6 +15,7 @@ import (
 	"github.com/rebira678/ledger/internal/auth"
 	"github.com/rebira678/ledger/internal/domain"
 	"github.com/rebira678/ledger/internal/httpx"
+	"github.com/rebira678/ledger/internal/mail"
 	"github.com/rebira678/ledger/internal/parsers"
 	"github.com/rebira678/ledger/internal/repo"
 )
@@ -26,6 +28,7 @@ type Server struct {
 	Cfg    Config
 	Env    string           // "development" | "production" — controls secure cookies
 	Now    func() time.Time // injectable clock for tests
+	Mailer mail.Sender      // interface for sending emails
 
 	// CategorizeAndQueue runs the categorization engine before persistence
 	// (Phase 4); wired at startup, nil-safe in tests.
@@ -52,8 +55,8 @@ type Config struct {
 }
 
 // New builds the API server.
-func New(r *repo.Repo, t *auth.Tokenizer, p *parsers.Registry, cfg Config) *Server {
-	return &Server{Repo: r, Tokens: t, Parser: p, Cfg: cfg, Now: time.Now}
+func New(r *repo.Repo, t *auth.Tokenizer, p *parsers.Registry, m mail.Sender, cfg Config) *Server {
+	return &Server{Repo: r, Tokens: t, Parser: p, Mailer: m, Cfg: cfg, Now: time.Now}
 }
 
 //---- Auth handlers -----------------------------------------------------------
@@ -232,8 +235,16 @@ func (s *Server) handleForgotPassword(w http.ResponseWriter, r *http.Request) {
 			httpx.WriteError(w, httpx.MapDomainError(err))
 			return
 		}
-		// In a real app, send email here. Since this is an MVP, we will return the token in a header for debugging.
-		// For a real production app we'd dispatch an email job and not leak the token here.
+		
+		resetLink := fmt.Sprintf("https://ledger-web-brvn.onrender.com/reset-password?token=%s", rawToken)
+		if s.Mailer != nil {
+			if err := s.Mailer.SendPasswordReset(user.Email, resetLink); err != nil {
+				// Don't fail the request if email fails, but log it (in a real app)
+				fmt.Printf("ERROR sending email: %v\n", err)
+			}
+		}
+
+		// Keep header for local dev convenience
 		w.Header().Set("X-Debug-Reset-Token", rawToken)
 	}
 	w.WriteHeader(http.StatusOK)
