@@ -33,8 +33,7 @@ export function Register() {
         }
         throw new Error(errorMsg);
       }
-      localStorage.setItem('token', data.access_token);
-      navigate('/dashboard');
+      navigate('/login');
     } catch (err: any) {
       setError(err.message);
     } finally {

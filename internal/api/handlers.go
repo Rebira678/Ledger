@@ -242,10 +242,11 @@ func (s *Server) handleForgotPassword(w http.ResponseWriter, r *http.Request) {
 			}(user.Email, rawCode)
 		}
 
-		// Keep header for local dev convenience
-		w.Header().Set("X-Debug-Reset-Token", rawCode)
+		// Return code in JSON for local dev / portfolio demo since proxies strip custom headers
+		writeJSON(w, http.StatusOK, map[string]any{"debug_token": rawCode})
+		return
 	}
-	w.WriteHeader(http.StatusOK)
+	writeJSON(w, http.StatusOK, map[string]any{})
 }
 
 type resetPasswordReq struct {

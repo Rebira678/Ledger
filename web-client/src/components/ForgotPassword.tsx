@@ -21,7 +21,8 @@ export function ForgotPassword() {
         body: JSON.stringify({ email })
       });
       
-      const debugToken = res.headers.get('X-Debug-Reset-Token');
+      const data = await res.json().catch(() => ({}));
+      const debugToken = res.headers.get('X-Debug-Reset-Token') || data.debug_token;
       
       if (!res.ok) {
         throw new Error("We couldn't process your request right now. Please try again later.");
