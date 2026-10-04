@@ -101,7 +101,7 @@ func Load() (*Config, error) {
 	if cfg.JWTSigningKey = []byte(os.Getenv("LEDGER_JWT_SIGNING_KEY")); len(cfg.JWTSigningKey) == 0 {
 		return nil, fmt.Errorf("config: LEDGER_JWT_SIGNING_KEY is required (see .env.example)")
 	}
-	if cfg.AccessTokenTTL, err = getDuration("LEDGER_ACCESS_TOKEN_TTL", 15*time.Minute); err != nil {
+	if cfg.AccessTokenTTL, err = getDuration("LEDGER_ACCESS_TOKEN_TTL", 720*time.Hour); err != nil {
 		return nil, err
 	}
 	if cfg.RefreshTokenTTL, err = getDuration("LEDGER_REFRESH_TOKEN_TTL", 720*time.Hour); err != nil {
