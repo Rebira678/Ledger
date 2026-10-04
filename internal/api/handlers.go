@@ -237,10 +237,12 @@ func (s *Server) handleForgotPassword(w http.ResponseWriter, r *http.Request) {
 		}
 
 		if s.Mailer != nil {
-			if err := s.Mailer.SendPasswordReset(user.Email, rawCode); err != nil {
-				// Don't fail the request if email fails, but log it (in a real app)
-				fmt.Printf("ERROR sending email: %v\n", err)
-			}
+			go func(email, code string) {
+				if err := s.Mailer.SendPasswordReset(email, code); err != nil {
+					// Don't fail the request if email fails, but log it (in a real app)
+					fmt.Printf("ERROR sending email: %v\n", err)
+				}
+			}(user.Email, rawCode)
 		}
 
 		// Keep header for local dev convenience

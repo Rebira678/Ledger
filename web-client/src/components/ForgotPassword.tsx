@@ -7,6 +7,7 @@ export function ForgotPassword() {
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState('');
+  const [demoCode, setDemoCode] = useState('');
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -28,6 +29,7 @@ export function ForgotPassword() {
       
       if (debugToken) {
         console.log("DEBUG: Temporary Password Code is:", debugToken);
+        setDemoCode(debugToken);
       }
       
       setSuccess(true);
@@ -60,6 +62,15 @@ export function ForgotPassword() {
         {success ? (
           <div style={{ textAlign: 'center', marginBottom: '24px' }}>
             <p style={{ color: 'var(--status-success)', marginBottom: '16px' }}>Check your email for your temporary password code.</p>
+            {demoCode && (
+              <div style={{ padding: '16px', background: 'var(--bg-card)', borderRadius: '8px', border: '1px solid var(--border)', marginBottom: '16px' }}>
+                <p style={{ fontSize: '12px', color: 'var(--text-secondary)', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Developer Demo Mode</p>
+                <p style={{ fontSize: '14px', color: 'var(--text-primary)', marginBottom: '12px' }}>Because Render's free tier blocks outgoing emails, here is the secure code that would normally be emailed to you:</p>
+                <div style={{ fontSize: '24px', fontWeight: 'bold', letterSpacing: '0.2em', color: 'var(--brand-primary)', fontFamily: 'monospace' }}>
+                  {demoCode}
+                </div>
+              </div>
+            )}
             <Link to="/reset-password" className="btn-primary" style={{ display: 'inline-block', width: '100%' }}>Enter Code</Link>
           </div>
         ) : (
