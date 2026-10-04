@@ -24,7 +24,7 @@ export function Profile() {
           localStorage.removeItem('token');
           navigate('/login');
         }
-        throw new Error('Failed to fetch profile');
+        throw new Error("We couldn't load your profile information. Please try refreshing the page.");
       }
       return r.json();
     })
@@ -53,7 +53,7 @@ export function Profile() {
     const file = e.target.files?.[0];
     if (file) {
       if (file.size > 1024 * 1024) {
-        showToast("File is too large. Max 1MB.");
+        showToast("That image is a bit too large! Please choose one under 1MB.");
         return;
       }
       const reader = new FileReader();
@@ -75,12 +75,12 @@ export function Profile() {
         body: JSON.stringify({ display_name: displayName, avatar_url: avatarUrl })
       });
       if (res.ok) {
-        showToast('Profile settings saved successfully.');
+        showToast('Looking good! Your profile has been updated.');
       } else {
-        showToast('Failed to save profile.');
+        showToast("We couldn't save your changes right now. Give it another try?");
       }
     } catch (e) {
-      showToast('Network error saving profile.');
+      showToast("It looks like you're offline. Please check your connection and try again.");
     }
   };
 
@@ -186,9 +186,9 @@ export function Profile() {
               </div>
             )}
             <div style={{ padding: '16px 24px', background: 'rgba(0,0,0,0.2)' }}>
-              <button onClick={() => showToast('Install the Android app and log in to automatically pair a new device.')} className="secondary" style={{ width: '100%', padding: '10px', fontSize: '0.85rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', borderStyle: 'dashed' }}>
-                <Smartphone size={16} /> Pair New Agent Device
-              </button>
+              <a href="https://github.com/Rebira678/Ledger/releases/latest/download/app-release.apk" download="Ledger.apk" className="secondary" style={{ width: '100%', padding: '10px', fontSize: '0.85rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', borderStyle: 'dashed', textDecoration: 'none', color: 'inherit' }}>
+                <Smartphone size={16} /> Download Android App
+              </a>
             </div>
           </div>
         </div>
@@ -248,7 +248,7 @@ export function Profile() {
               </div>
               <button onClick={() => {
                 if (window.confirm("Are you absolutely sure you want to delete your account? This action cannot be undone.")) {
-                  showToast('Account deletion requested. Support will contact you shortly.');
+                  showToast("We've received your request to delete the account. Our support team will reach out shortly to finalize this.");
                 }
               }} style={{ background: 'transparent', border: '1px solid rgba(239, 68, 68, 0.3)', color: 'var(--status-danger)', padding: '8px 16px', borderRadius: '6px', fontSize: '0.85rem', fontWeight: 500, cursor: 'pointer' }}>
                 Delete Account
