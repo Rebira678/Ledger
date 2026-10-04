@@ -3,23 +3,20 @@ import { useNavigate, Link, useSearchParams } from 'react-router-dom';
 import { Layers } from 'lucide-react';
 
 export function ResetPassword() {
+  const [searchParams] = useSearchParams();
+  const [token, setToken] = useState(searchParams.get('token') || '');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState('');
-  const [searchParams] = useSearchParams();
-  const token = searchParams.get('token');
   const navigate = useNavigate();
-
-  useEffect(() => {
-    if (!token) {
-      setError("Invalid or missing password reset token.");
-    }
-  }, [token]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!token) return;
+    if (!token) {
+      setError("Please enter the temporary password code sent to your email.");
+      return;
+    }
     
     setLoading(true);
     setError('');
@@ -81,6 +78,19 @@ export function ResetPassword() {
         ) : (
           <form onSubmit={handleSubmit}>
             <div className="form-group">
+              <label>Temporary Password Code</label>
+              <input 
+                type="text" 
+                placeholder="ABCDEF" 
+                required 
+                value={token} 
+                onChange={e => setToken(e.target.value.toUpperCase())} 
+                disabled={loading}
+                autoComplete="off"
+              />
+            </div>
+
+            <div className="form-group">
               <label>New Password</label>
               <input 
                 type="password" 
@@ -89,13 +99,13 @@ export function ResetPassword() {
                 minLength={8}
                 value={password} 
                 onChange={e => setPassword(e.target.value)} 
-                disabled={loading || !token}
+                disabled={loading}
                 autoComplete="new-password"
               />
             </div>
 
-            <button type="submit" disabled={loading || !token}>
-              {loading ? 'Resetting...' : 'Reset Password'}
+            <button type="submit" disabled={loading}>
+              {loading ? 'Resetting...' : 'Change Password'}
             </button>
           </form>
         )}

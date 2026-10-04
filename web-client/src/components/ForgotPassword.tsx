@@ -27,10 +27,7 @@ export function ForgotPassword() {
       }
       
       if (debugToken) {
-        console.log("DEBUG: Reset Token is:", debugToken);
-        // Automatically redirect to reset page for local development / portfolio demonstration purposes
-        window.location.href = `/reset-password?token=${debugToken}`;
-        return;
+        console.log("DEBUG: Temporary Password Code is:", debugToken);
       }
       
       setSuccess(true);
@@ -62,8 +59,8 @@ export function ForgotPassword() {
 
         {success ? (
           <div style={{ textAlign: 'center', marginBottom: '24px' }}>
-            <p style={{ color: 'var(--status-success)', marginBottom: '16px' }}>Check your email for a link to reset your password.</p>
-            <Link to="/login" className="btn-primary" style={{ display: 'inline-block', width: '100%' }}>Back to Login</Link>
+            <p style={{ color: 'var(--status-success)', marginBottom: '16px' }}>Check your email for your temporary password code.</p>
+            <Link to="/reset-password" className="btn-primary" style={{ display: 'inline-block', width: '100%' }}>Enter Code</Link>
           </div>
         ) : (
           <form onSubmit={handleSubmit}>

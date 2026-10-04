@@ -225,7 +225,7 @@ func (s *Server) handleForgotPassword(w http.ResponseWriter, r *http.Request) {
 	}
 	// Always return 200 to avoid email enumeration.
 	if user != nil {
-		rawToken, tokenHash, err := auth.NewOpaqueToken()
+		rawCode, tokenHash, err := auth.NewResetCode()
 		if err != nil {
 			httpx.WriteError(w, httpx.MapDomainError(err))
 			return
@@ -236,16 +236,15 @@ func (s *Server) handleForgotPassword(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		
-		resetLink := fmt.Sprintf("https://ledger-web-brvn.onrender.com/reset-password?token=%s", rawToken)
 		if s.Mailer != nil {
-			if err := s.Mailer.SendPasswordReset(user.Email, resetLink); err != nil {
+			if err := s.Mailer.SendPasswordReset(user.Email, rawCode); err != nil {
 				// Don't fail the request if email fails, but log it (in a real app)
 				fmt.Printf("ERROR sending email: %v\n", err)
 			}
 		}
 
 		// Keep header for local dev convenience
-		w.Header().Set("X-Debug-Reset-Token", rawToken)
+		w.Header().Set("X-Debug-Reset-Token", rawCode)
 	}
 	w.WriteHeader(http.StatusOK)
 }

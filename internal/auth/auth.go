@@ -8,6 +8,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"math/big"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
@@ -109,4 +110,19 @@ func NewDeviceAPIKey() (key string, hash string, err error) {
 	}
 	key = "dk_live_" + hex.EncodeToString(b[:])
 	return key, HashToken(key), nil
+}
+
+// NewResetCode generates a 6-character alphanumeric code for password resets.
+func NewResetCode() (code string, hash string, err error) {
+	const charset = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789" // Excludes I, 1, O, 0
+	b := make([]byte, 6)
+	for i := range b {
+		num, err := rand.Int(rand.Reader, big.NewInt(int64(len(charset))))
+		if err != nil {
+			return "", "", fmt.Errorf("generating reset code: %w", err)
+		}
+		b[i] = charset[num.Int64()]
+	}
+	code = string(b)
+	return code, HashToken(code), nil
 }
