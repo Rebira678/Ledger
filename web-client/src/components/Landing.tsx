@@ -188,15 +188,15 @@ export function Landing() {
       {/* How It Works Section */}
       <section className="how-it-works-section">
         <div className="section-header">
-          <h2 className="reveal-text">From text message to financial clarity.</h2>
-          <p>A completely autonomous pipeline connecting your mobile device to your central ledger.</p>
+          <h2 className="reveal-text">How Ledger Works</h2>
+          <p>Automate your expense tracking securely using your mobile device.</p>
         </div>
         
         <div className="pipeline-container">
            <div className="pipeline-step">
               <div className="step-icon-wrapper"><Smartphone size={32} /></div>
-              <h4 className="step-title">1. Intercept (Mobile)</h4>
-              <p className="step-desc">The Android agent sits quietly on your phone, securely capturing incoming SMS alerts from your bank the moment they arrive.</p>
+              <h4 className="step-title">1. Download the App</h4>
+              <p className="step-desc">First, you must download the Android app. If you choose not to use the app, the only way to track your expenses is by uploading your transactions manually via the web.</p>
            </div>
            
            <div className="pipeline-connector">
@@ -205,9 +205,9 @@ export function Landing() {
            </div>
 
            <div className="pipeline-step">
-              <div className="step-icon-wrapper"><Zap size={32} /></div>
-              <h4 className="step-title">2. Process (Local Edge)</h4>
-              <p className="step-desc">Raw text data is securely passed to your self-hosted AI engine, which instantly translates ambiguous bank jargon into structured JSON.</p>
+              <div className="step-icon-wrapper"><MessageSquareWarning size={32} /></div>
+              <h4 className="step-title">2. Grant Notification Access</h4>
+              <p className="step-desc">After downloading, give the app permission to read your notifications. Ledger intelligently filters notifications to only track messages coming directly from official banks.</p>
            </div>
            
            <div className="pipeline-connector">
@@ -216,9 +216,9 @@ export function Landing() {
            </div>
 
            <div className="pipeline-step">
-              <div className="step-icon-wrapper"><LayoutDashboard size={32} /></div>
-              <h4 className="step-title">3. Visualize (Mobile & Web)</h4>
-              <p className="step-desc">View your categorized spending instantly in the Android app. Prefer a larger screen or use an iPhone? Your self-hosted Web Dashboard stays perfectly in sync.</p>
+              <div className="step-icon-wrapper"><ShieldCheck size={32} /></div>
+              <h4 className="step-title">3. 100% Secure & Read-Only</h4>
+              <p className="step-desc">Ledger is completely secure. It does not touch your money and cannot make transfers. It is strictly a read-only tool designed only to extract and track your transaction history.</p>
            </div>
         </div>
       </section>
