@@ -6,11 +6,12 @@ import { ArrowUpRight, ArrowDownRight, AlertCircle } from 'lucide-react';
 export function Dashboard() {
   const navigate = useNavigate();
   const [data, setData] = useState<any>(null);
+  const [period, setPeriod] = useState<string>('this_week');
 
   useEffect(() => {
     async function fetchDashboard() {
       try {
-        const res = await fetch('/v1/dashboard/summary', {
+        const res = await fetch(`/v1/dashboard/summary?period=${period}`, {
           headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
         });
         if (res.ok) {
@@ -22,14 +23,14 @@ export function Dashboard() {
       }
     }
     fetchDashboard();
-  }, []);
+  }, [period]);
 
   const chartData = data ? [
-    { name: 'Income (+)', value: data.this_week_income || 0, fill: '#10b981' }, // Green
-    { name: 'Expense (-)', value: data.this_week_spend || 0, fill: '#ef4444' }  // Red
+    { name: 'Income (+)', value: data.period_income || 0, fill: '#10b981' }, // Green
+    { name: 'Expense (-)', value: data.period_spend || 0, fill: '#ef4444' }  // Red
   ] : [];
 
-  const maxVal = Math.max(data?.this_week_income || 0, data?.this_week_spend || 0);
+  const maxVal = Math.max(data?.period_income || 0, data?.period_spend || 0);
   const maxTick = Math.max(2000, Math.ceil(maxVal / 500) * 500);
   const yTicks = [];
   for (let i = 0; i <= maxTick; i += 500) {
@@ -70,8 +71,27 @@ export function Dashboard() {
         </div>
       )}
 
-      <div className="section-header" style={{ textAlign: 'left', margin: '0 0 32px 0', padding: 0 }}>
-        <h2 className="reveal-text" style={{ fontSize: '2.5rem' }}>Overview</h2>
+      <div className="section-header" style={{ textAlign: 'left', margin: '0 0 32px 0', padding: 0, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <h2 className="reveal-text" style={{ fontSize: '2.5rem', margin: 0 }}>Overview</h2>
+        <select 
+          value={period} 
+          onChange={(e) => setPeriod(e.target.value)}
+          style={{
+            background: 'var(--bg-card)',
+            color: 'var(--text-primary)',
+            border: '1px solid var(--border)',
+            padding: '8px 16px',
+            borderRadius: '8px',
+            fontSize: '0.875rem',
+            outline: 'none',
+            cursor: 'pointer'
+          }}
+        >
+          <option value="this_week">This Week</option>
+          <option value="last_week">Last Week</option>
+          <option value="this_month">This Month</option>
+          <option value="last_month">Last Month</option>
+        </select>
       </div>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '24px', marginBottom: '40px' }}>
         
@@ -84,14 +104,14 @@ export function Dashboard() {
                 <div className="tabular-data" style={{ fontSize: '2.5rem', fontWeight: 500, color: 'var(--text-primary)', display: 'flex', alignItems: 'baseline', gap: '8px', lineHeight: 1.1 }}>
                   {data.estimated_balance.toLocaleString(undefined, { minimumFractionDigits: 2 })} <span style={{ fontSize: '1.25rem', color: 'var(--text-muted)' }}>ETB</span>
                 </div>
-                {data.week_over_week_pct !== null && data.week_over_week_pct !== undefined ? (
-                  <div style={{ marginTop: '16px', display: 'flex', alignItems: 'center', gap: '4px', color: data.week_over_week_pct > 0 ? 'var(--status-danger)' : 'var(--status-success)', fontSize: '0.875rem', fontWeight: 500 }}>
-                    {data.week_over_week_pct > 0 ? <ArrowUpRight size={16} /> : <ArrowDownRight size={16} />}
-                    {data.week_over_week_pct > 0 ? '+' : ''}{data.week_over_week_pct.toFixed(1)}% spend from last wk
+                {data.period_over_period_pct !== null && data.period_over_period_pct !== undefined ? (
+                  <div style={{ marginTop: '16px', display: 'flex', alignItems: 'center', gap: '4px', color: data.period_over_period_pct > 0 ? 'var(--status-danger)' : 'var(--status-success)', fontSize: '0.875rem', fontWeight: 500 }}>
+                    {data.period_over_period_pct > 0 ? <ArrowUpRight size={16} /> : <ArrowDownRight size={16} />}
+                    {data.period_over_period_pct > 0 ? '+' : ''}{data.period_over_period_pct.toFixed(1)}% spend from previous
                   </div>
                 ) : (
                   <div style={{ marginTop: '16px', display: 'flex', alignItems: 'center', gap: '4px', color: 'var(--text-muted)', fontSize: '0.875rem', fontWeight: 500 }}>
-                    No prior week data
+                    No prior period data
                   </div>
                 )}
               </>
@@ -107,11 +127,11 @@ export function Dashboard() {
         <div className="bento-card bento-hover">
           <div className="bento-glow"></div>
           <div className="bento-content">
-            <div style={{ color: 'var(--text-muted)', fontSize: '0.875rem', fontWeight: 500, marginBottom: '8px' }}>This Week's Income</div>
+            <div style={{ color: 'var(--text-muted)', fontSize: '0.875rem', fontWeight: 500, marginBottom: '8px' }}>Period Income</div>
             {data ? (
               <>
                 <div className="tabular-data" style={{ fontSize: '2.5rem', fontWeight: 500, color: 'var(--status-success)', display: 'flex', alignItems: 'baseline', gap: '8px', lineHeight: 1.1 }}>
-                  +{data.this_week_income.toLocaleString(undefined, { minimumFractionDigits: 2 })} <span style={{ fontSize: '1.25rem', color: 'var(--text-muted)' }}>ETB</span>
+                  +{data.period_income.toLocaleString(undefined, { minimumFractionDigits: 2 })} <span style={{ fontSize: '1.25rem', color: 'var(--text-muted)' }}>ETB</span>
                 </div>
                 <div style={{ marginTop: '16px', color: 'var(--text-muted)', fontSize: '0.875rem' }}>
                   Total deposits
@@ -129,11 +149,11 @@ export function Dashboard() {
         <div className="bento-card bento-hover">
           <div className="bento-glow"></div>
           <div className="bento-content">
-            <div style={{ color: 'var(--text-muted)', fontSize: '0.875rem', fontWeight: 500, marginBottom: '8px' }}>This Week's Spend</div>
+            <div style={{ color: 'var(--text-muted)', fontSize: '0.875rem', fontWeight: 500, marginBottom: '8px' }}>Period Spend</div>
             {data ? (
               <>
                 <div className="tabular-data" style={{ fontSize: '2.5rem', fontWeight: 500, color: 'var(--status-danger)', display: 'flex', alignItems: 'baseline', gap: '8px', lineHeight: 1.1 }}>
-                  −{data.this_week_spend.toLocaleString(undefined, { minimumFractionDigits: 2 })} <span style={{ fontSize: '1.25rem', color: 'var(--text-muted)' }}>ETB</span>
+                  −{data.period_spend.toLocaleString(undefined, { minimumFractionDigits: 2 })} <span style={{ fontSize: '1.25rem', color: 'var(--text-muted)' }}>ETB</span>
                 </div>
                 <div style={{ marginTop: '16px', color: 'var(--text-muted)', fontSize: '0.875rem' }}>
                   Top Category: <span style={{ color: 'var(--text-primary)', fontWeight: 500 }}>{data.top_category}</span>

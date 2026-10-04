@@ -764,47 +764,78 @@ func (s *Server) handleDashboardSummary(w http.ResponseWriter, r *http.Request) 
 		httpx.WriteError(w, httpx.MapDomainError(err))
 		return
 	}
+	period := r.URL.Query().Get("period")
+	if period == "" {
+		period = "this_week"
+	}
+
 	now := s.Now()
-	weekStart := domain.WeekStart(now)
-	from := weekStart.Format("2006-01-02T15:04:05Z")
-	to := weekStart.AddDate(0, 0, 7).Format("2006-01-02T15:04:05Z")
-	totals, err := s.Repo.Reports.SumByCategoryForPeriod(ctx, userID, from, to)
+	var from, to time.Time
+	var prevFrom, prevTo time.Time
+
+	switch period {
+	case "last_week":
+		to = domain.WeekStart(now)
+		from = to.AddDate(0, 0, -7)
+		prevTo = from
+		prevFrom = prevTo.AddDate(0, 0, -7)
+	case "this_month":
+		from = time.Date(now.Year(), now.Month(), 1, 0, 0, 0, 0, now.Location())
+		to = from.AddDate(0, 1, 0)
+		prevTo = from
+		prevFrom = prevTo.AddDate(0, -1, 0)
+	case "last_month":
+		to = time.Date(now.Year(), now.Month(), 1, 0, 0, 0, 0, now.Location())
+		from = to.AddDate(0, -1, 0)
+		prevTo = from
+		prevFrom = prevTo.AddDate(0, -1, 0)
+	default: // "this_week"
+		from = domain.WeekStart(now)
+		to = from.AddDate(0, 0, 7)
+		prevTo = from
+		prevFrom = prevTo.AddDate(0, 0, -7)
+	}
+
+	fromStr := from.Format("2006-01-02T15:04:05Z")
+	toStr := to.Format("2006-01-02T15:04:05Z")
+	prevFromStr := prevFrom.Format("2006-01-02T15:04:05Z")
+	prevToStr := prevTo.Format("2006-01-02T15:04:05Z")
+
+	totals, err := s.Repo.Reports.SumByCategoryForPeriod(ctx, userID, fromStr, toStr)
 	if err != nil {
 		httpx.WriteError(w, httpx.MapDomainError(err))
 		return
 	}
-	inc, exp, err := s.Repo.Reports.IncomeAndExpenseForPeriod(ctx, userID, from, to)
+	inc, exp, err := s.Repo.Reports.IncomeAndExpenseForPeriod(ctx, userID, fromStr, toStr)
 	if err != nil {
 		httpx.WriteError(w, httpx.MapDomainError(err))
 		return
 	}
 
-	// Previous week totals for real WOW computation.
-	prevFrom := weekStart.AddDate(0, 0, -7).Format("2006-01-02T15:04:05Z")
-	prevTotals, err := s.Repo.Reports.SumByCategoryForPeriod(ctx, userID, prevFrom, from)
+	prevTotals, err := s.Repo.Reports.SumByCategoryForPeriod(ctx, userID, prevFromStr, prevToStr)
 	if err != nil {
 		httpx.WriteError(w, httpx.MapDomainError(err))
 		return
 	}
 
 	topCat, topAmt := "", 0.0
-	var thisWeekTotal float64
+	var thisPeriodTotal float64
 	for c, v := range totals {
-		thisWeekTotal += v
+		thisPeriodTotal += v
 		if v > topAmt {
 			topCat, topAmt = c, v
 		}
 	}
-	var lastWeekTotal float64
+	var lastPeriodTotal float64
 	for _, v := range prevTotals {
-		lastWeekTotal += v
+		lastPeriodTotal += v
 	}
 
-	// Real WOW % change.
-	var wowPct *float64
-	if lastWeekTotal > 0 {
-		pct := (thisWeekTotal - lastWeekTotal) / lastWeekTotal * 100
-		wowPct = &pct
+	// Real WOW / MOM % change.
+	var popPct *float64
+	if lastPeriodTotal > 0 {
+		pct := (thisPeriodTotal - lastPeriodTotal) / lastPeriodTotal * 100
+		popPct = &pct
 	}
 
 	pending, err := s.Repo.Clarifs.ListPending(ctx, userID)
@@ -815,10 +846,10 @@ func (s *Server) handleDashboardSummary(w http.ResponseWriter, r *http.Request) 
 	writeJSON(w, http.StatusOK, map[string]any{
 		"estimated_balance":      bal,
 		"currency":               "ETB",
-		"this_week_income":       inc,
-		"this_week_spend":        exp,
-		"last_week_spend":        lastWeekTotal,
-		"week_over_week_pct":     wowPct,
+		"period_income":          inc,
+		"period_spend":           exp,
+		"prev_period_spend":      lastPeriodTotal,
+		"period_over_period_pct": popPct,
 		"top_category":           topCat,
 		"pending_clarifications": len(pending),
 		"category_totals":        totals,
