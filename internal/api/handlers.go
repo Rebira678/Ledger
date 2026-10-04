@@ -199,6 +199,90 @@ func (s *Server) handleRefresh(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+type forgotPasswordReq struct {
+	Email string `json:"email"`
+}
+
+func (s *Server) handleForgotPassword(w http.ResponseWriter, r *http.Request) {
+	var req forgotPasswordReq
+	if err := httpx.DecodeJSON(r, &req); err != nil {
+		httpx.WriteError(w, err)
+		return
+	}
+	email := strings.ToLower(strings.TrimSpace(req.Email))
+	if email == "" {
+		httpx.Envelope(w, http.StatusUnprocessableEntity, "VALIDATION_ERROR", "email is required", "email")
+		return
+	}
+
+	user, _, err := s.Repo.Users.GetByEmail(r.Context(), email)
+	if err != nil {
+		httpx.WriteError(w, httpx.MapDomainError(err))
+		return
+	}
+	// Always return 200 to avoid email enumeration.
+	if user != nil {
+		rawToken, tokenHash, err := auth.NewOpaqueToken()
+		if err != nil {
+			httpx.WriteError(w, httpx.MapDomainError(err))
+			return
+		}
+		expiresAt := s.Now().Add(1 * time.Hour)
+		if err := s.Repo.Users.CreatePasswordReset(r.Context(), tokenHash, user.ID, expiresAt); err != nil {
+			httpx.WriteError(w, httpx.MapDomainError(err))
+			return
+		}
+		// In a real app, send email here. Since this is an MVP, we will return the token in a header for debugging.
+		// For a real production app we'd dispatch an email job and not leak the token here.
+		w.Header().Set("X-Debug-Reset-Token", rawToken)
+	}
+	w.WriteHeader(http.StatusOK)
+}
+
+type resetPasswordReq struct {
+	Token    string `json:"token"`
+	Password string `json:"password"`
+}
+
+func (s *Server) handleResetPassword(w http.ResponseWriter, r *http.Request) {
+	var req resetPasswordReq
+	if err := httpx.DecodeJSON(r, &req); err != nil {
+		httpx.WriteError(w, err)
+		return
+	}
+	if req.Token == "" {
+		httpx.Envelope(w, http.StatusUnprocessableEntity, "VALIDATION_ERROR", "token is required", "token")
+		return
+	}
+	if len(req.Password) < 8 {
+		httpx.Envelope(w, http.StatusBadRequest, "VALIDATION_ERROR", "password must be at least 8 characters", "password")
+		return
+	}
+
+	tokenHash := auth.HashToken(req.Token)
+	userID, expiresAt, err := s.Repo.Users.GetPasswordReset(r.Context(), tokenHash)
+	if err != nil || s.Now().After(expiresAt) {
+		httpx.Envelope(w, http.StatusUnauthorized, "UNAUTHENTICATED", "invalid or expired reset token", "")
+		return
+	}
+
+	hash, err := auth.HashPassword(req.Password)
+	if err != nil {
+		httpx.WriteError(w, httpx.MapDomainError(err))
+		return
+	}
+
+	if err := s.Repo.Users.UpdatePassword(r.Context(), userID, hash); err != nil {
+		httpx.WriteError(w, httpx.MapDomainError(err))
+		return
+	}
+
+	// Consume token
+	_ = s.Repo.Users.DeletePasswordReset(r.Context(), tokenHash)
+
+	w.WriteHeader(http.StatusOK)
+}
+
 type pairReq struct {
 	DeviceModel string `json:"device_model"`
 	OSVersion   string `json:"os_version"`

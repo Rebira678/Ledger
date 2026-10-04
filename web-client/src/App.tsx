@@ -19,6 +19,8 @@ import { Security } from './components/Security';
 import { SelfHosting } from './components/SelfHosting';
 import { Changelog } from './components/Changelog';
 import { Community } from './components/Community';
+import { ForgotPassword } from './components/ForgotPassword';
+import { ResetPassword } from './components/ResetPassword';
 
 function Sidebar({ isOpen, setIsOpen }: { isOpen: boolean, setIsOpen: (val: boolean) => void }) {
   const navigate = useNavigate();
@@ -114,6 +116,8 @@ function App() {
         
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
+        <Route path="/forgot-password" element={<ForgotPassword />} />
+        <Route path="/reset-password" element={<ResetPassword />} />
         
         <Route path="/privacy" element={<Privacy />} />
         <Route path="/terms" element={<Terms />} />

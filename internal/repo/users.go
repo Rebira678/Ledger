@@ -6,6 +6,7 @@ import (
 	"errors"
 
 	"github.com/rebira678/ledger/internal/domain"
+	"time"
 )
 
 // UserRepo persists users.
@@ -72,6 +73,46 @@ func (r *UserRepo) GetByID(ctx context.Context, id string) (*domain.User, error)
 		return nil, notFound("getting user by id", err)
 	}
 	return &u, nil
+}
+
+// UpdatePassword updates the user's password hash.
+func (r *UserRepo) UpdatePassword(ctx context.Context, id, passwordHash string) error {
+	_, err := r.db.ExecContext(ctx,
+		`UPDATE users SET password_hash = $1 WHERE id = $2`,
+		passwordHash, id)
+	if err != nil {
+		return wrap("updating user password", mapPgError(err))
+	}
+	return nil
+}
+
+// CreatePasswordReset inserts a new password reset token.
+func (r *UserRepo) CreatePasswordReset(ctx context.Context, tokenHash, userID string, expiresAt time.Time) error {
+	_, err := r.db.ExecContext(ctx,
+		`INSERT INTO password_resets (token_hash, user_id, expires_at) VALUES ($1, $2, $3)`,
+		tokenHash, userID, expiresAt)
+	if err != nil {
+		return wrap("creating password reset", mapPgError(err))
+	}
+	return nil
+}
+
+// GetPasswordReset retrieves a password reset record.
+func (r *UserRepo) GetPasswordReset(ctx context.Context, tokenHash string) (string, time.Time, error) {
+	var userID string
+	var expiresAt time.Time
+	err := r.db.QueryRowContext(ctx,
+		`SELECT user_id, expires_at FROM password_resets WHERE token_hash = $1`, tokenHash).Scan(&userID, &expiresAt)
+	if err != nil {
+		return "", time.Time{}, notFound("getting password reset", err)
+	}
+	return userID, expiresAt, nil
+}
+
+// DeletePasswordReset removes a used or expired password reset token.
+func (r *UserRepo) DeletePasswordReset(ctx context.Context, tokenHash string) error {
+	_, err := r.db.ExecContext(ctx, `DELETE FROM password_resets WHERE token_hash = $1`, tokenHash)
+	return wrap("deleting password reset", err)
 }
 
 // ListUserIDs returns all user ids — used only by the report worker (no tenant scope by design).

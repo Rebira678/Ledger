@@ -75,8 +75,12 @@ export function Login() {
           </div>
 
           <div className="form-group">
-            <label>Password</label>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <label style={{ marginBottom: 0 }}>Password</label>
+              <Link to="/forgot-password" style={{ fontSize: '0.85rem', color: 'var(--primary)', textDecoration: 'none' }}>Forgot password?</Link>
+            </div>
             <input 
+              style={{ marginTop: '8px' }}
               type="password" 
               placeholder="••••••••" 
               required 

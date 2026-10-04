@@ -22,6 +22,8 @@ func (s *Server) Routes(tokens *auth.Tokenizer) http.Handler {
 	authMux.HandleFunc("POST /v1/auth/register", s.handleRegister)
 	authMux.HandleFunc("POST /v1/auth/login", s.handleLogin)
 	authMux.HandleFunc("POST /v1/auth/refresh", s.handleRefresh)
+	authMux.HandleFunc("POST /v1/auth/forgot-password", s.handleForgotPassword)
+	authMux.HandleFunc("POST /v1/auth/reset-password", s.handleResetPassword)
 	authChainHandler := httpx.Chain(http.Handler(authMux),
 		httpx.RateLimit(httpx.KeyByIP, s.Cfg.RateUserPerMin),
 	)
