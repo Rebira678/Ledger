@@ -24,7 +24,6 @@ export function Landing() {
           {isMenuOpen ? <X size={24} /> : <Menu size={24} />}
         </button>
         <div className={`landing-nav-links ${isMenuOpen ? 'mobile-open' : ''}`}>
-          <a href="https://github.com/Rebira678/Ledger" target="_blank" rel="noreferrer" className="nav-link-ghost">Documentation</a>
           <Link to="/login" className="nav-link-ghost">Log in</Link>
           <Link to="/register" className="nav-link-primary">Get Started</Link>
         </div>
@@ -49,7 +48,7 @@ export function Landing() {
         </p>
         
         <div className="hero-actions animate-fade-in-up" style={{ animationDelay: '400ms' }}>
-          <a href="#" className="btn-primary">
+          <a href="https://github.com/Rebira678/Ledger/releases/latest/download/app-release.apk" download="Ledger.apk" className="btn-primary">
             <Smartphone size={18} style={{ marginRight: 4 }} />
             Download for Android
           </a>
@@ -304,31 +303,30 @@ export function Landing() {
               The open-source, AI-powered financial agent for sovereign individuals.
             </p>
             <div className="footer-socials">
-              <a href="#">X / Twitter</a>
-              <a href="#">LinkedIn</a>
-              <a href="#">GitHub</a>
+              <a href="https://x.com/Rebira678" target="_blank" rel="noreferrer">X / Twitter</a>
+              <a href="https://linkedin.com/in/rebira" target="_blank" rel="noreferrer">LinkedIn</a>
+              <a href="https://github.com/Rebira678/Ledger" target="_blank" rel="noreferrer">GitHub</a>
             </div>
           </div>
           <div className="footer-grid">
             <div className="footer-column">
               <h4>Product</h4>
-              <a href="#">Features</a>
-              <a href="#">Security</a>
-              <a href="#">Self-Hosting</a>
-              <a href="#">Changelog</a>
+              <Link to="/features">Features</Link>
+              <Link to="/security">Security</Link>
+              <Link to="/self-hosting">Self-Hosting</Link>
+              <Link to="/changelog">Changelog</Link>
             </div>
             <div className="footer-column">
               <h4>Resources</h4>
-              <a href="#">Documentation</a>
-              <a href="#">API Reference</a>
-              <a href="#">Community</a>
+              <a href="https://github.com/Rebira678/Ledger/blob/main/Ledger_API_Contract.pdf" target="_blank" rel="noreferrer">API Reference</a>
+              <Link to="/community">Community</Link>
               <a href="https://github.com/Rebira678/Ledger" target="_blank" rel="noreferrer">GitHub</a>
             </div>
             <div className="footer-column">
               <h4>Legal</h4>
-              <a href="#">Privacy Policy</a>
-              <a href="#">Terms of Service</a>
-              <a href="#">License</a>
+              <Link to="/privacy">Privacy Policy</Link>
+              <Link to="/terms">Terms of Service</Link>
+              <Link to="/license">License</Link>
             </div>
           </div>
         </div>
