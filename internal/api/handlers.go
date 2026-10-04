@@ -102,11 +102,7 @@ func (s *Server) handleRegister(w http.ResponseWriter, r *http.Request) {
 		httpx.WriteError(w, httpx.MapDomainError(err))
 		return
 	}
-	writeJSON(w, http.StatusCreated, map[string]any{
-		"user_id":    user.ID,
-		"email":      user.Email,
-		"created_at": user.CreatedAt.UTC().Format(time.RFC3339),
-	})
+	s.issueTokens(w, r, user.ID, http.StatusCreated)
 }
 
 type loginReq struct {
