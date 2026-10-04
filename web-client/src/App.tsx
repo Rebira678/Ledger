@@ -10,8 +10,15 @@ import { Transactions } from './components/Transactions';
 import { Clarifications } from './components/Clarifications';
 import { Reports } from './components/Reports';
 import { Profile } from './components/Profile';
-
 import { Upload } from './components/Upload';
+import { Privacy } from './components/Privacy';
+import { Terms } from './components/Terms';
+import { License } from './components/License';
+import { Features } from './components/Features';
+import { Security } from './components/Security';
+import { SelfHosting } from './components/SelfHosting';
+import { Changelog } from './components/Changelog';
+import { Community } from './components/Community';
 
 function Sidebar({ isOpen, setIsOpen }: { isOpen: boolean, setIsOpen: (val: boolean) => void }) {
   const navigate = useNavigate();
@@ -75,6 +82,19 @@ function Layout({ children }: { children: React.ReactNode }) {
       <Sidebar isOpen={isSidebarOpen} setIsOpen={setIsSidebarOpen} />
       <main className="main-content">
         {children}
+        <div style={{ marginTop: 'auto', paddingTop: '40px' }}>
+          <div style={{ borderTop: '1px solid rgba(255,255,255,0.05)', paddingTop: '20px', display: 'flex', flexWrap: 'wrap', gap: '16px', fontSize: '0.8rem', color: 'var(--text-muted)', justifyContent: 'center' }}>
+            <NavLink to="/features" style={{ color: 'inherit', textDecoration: 'none' }}>Features</NavLink>
+            <NavLink to="/security" style={{ color: 'inherit', textDecoration: 'none' }}>Security</NavLink>
+            <NavLink to="/self-hosting" style={{ color: 'inherit', textDecoration: 'none' }}>Self-Hosting</NavLink>
+            <NavLink to="/changelog" style={{ color: 'inherit', textDecoration: 'none' }}>Changelog</NavLink>
+            <NavLink to="/community" style={{ color: 'inherit', textDecoration: 'none' }}>Community</NavLink>
+            <span style={{ opacity: 0.3 }}>|</span>
+            <NavLink to="/privacy" style={{ color: 'inherit', textDecoration: 'none' }}>Privacy Policy</NavLink>
+            <NavLink to="/terms" style={{ color: 'inherit', textDecoration: 'none' }}>Terms of Service</NavLink>
+            <NavLink to="/license" style={{ color: 'inherit', textDecoration: 'none' }}>License</NavLink>
+          </div>
+        </div>
       </main>
     </div>
   );
@@ -94,6 +114,15 @@ function App() {
         
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
+        
+        <Route path="/privacy" element={<Privacy />} />
+        <Route path="/terms" element={<Terms />} />
+        <Route path="/license" element={<License />} />
+        <Route path="/features" element={<Features />} />
+        <Route path="/security" element={<Security />} />
+        <Route path="/self-hosting" element={<SelfHosting />} />
+        <Route path="/changelog" element={<Changelog />} />
+        <Route path="/community" element={<Community />} />
         
         {/* Main App Routes */}
         <Route path="/dashboard" element={<PrivateRoute><Dashboard /></PrivateRoute>} />
