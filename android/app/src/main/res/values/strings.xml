@@ -14,10 +14,10 @@
     <string name="hint_email">Email</string>
     <string name="hint_password">Password</string>
     <string name="button_login">Log in &amp; pair this phone</string>
-    <string name="login_failed">Login failed — check your email and password</string>
-    <string name="pair_failed">Pairing failed — please try again</string>
-    <string name="pair_ok">Phone paired. Financial SMS will now be tracked.</string>
-    <string name="network_error">Network error — check your connection</string>
+    <string name="login_failed">We couldn\'t log you in. Please check your email and password.</string>
+    <string name="pair_failed">We couldn\'t pair your device right now. Please give it another try.</string>
+    <string name="pair_ok">Your phone is paired! Financial receipts will now sync automatically.</string>
+    <string name="network_error">It looks like you\'re offline. Please check your connection.</string>
 
     <string name="allowlist_title">Financial senders we watch (tapped messages are forwarded):</string>
     <string name="capture_log_title">Recent capture activity</string>
