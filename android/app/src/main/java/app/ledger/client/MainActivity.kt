@@ -93,7 +93,7 @@ class MainActivity : AppCompatActivity() {
                         if (!hasSmsPermissions()) {
                             requestSmsPermissions()
                         } else {
-                            showWebNotification("Android SMS Agent Active", false)
+                            showWebNotification("Your phone is now syncing receipts!", false)
                         }
                     }
                 }
@@ -188,7 +188,7 @@ class MainActivity : AppCompatActivity() {
         // If they just granted permissions, we can just show a toast or notification over the WebView!
         if (requestCode == REQ_SMS) {
             if (grantResults.isNotEmpty() && grantResults.all { it == PackageManager.PERMISSION_GRANTED }) {
-                Toast.makeText(this, "SMS Agent Connected", Toast.LENGTH_SHORT).show()
+                Toast.makeText(this, "Your phone is now securely connected to Ledger!", Toast.LENGTH_SHORT).show()
             } else {
                 showPermissionRationaleDialog()
             }
