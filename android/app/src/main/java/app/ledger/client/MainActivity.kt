@@ -139,7 +139,7 @@ class MainActivity : AppCompatActivity() {
                             const originalFetch = window.fetch;
                             window.fetch = async function(...args) {
                                 const response = await originalFetch.apply(this, args);
-                                if (args[0] && args[0].includes('/v1/auth/login') && response.ok) {
+                                if (args[0] && (args[0].includes('/v1/auth/login') || args[0].includes('/v1/auth/register')) && response.ok) {
                                     try {
                                         const clone = response.clone();
                                         const data = await clone.json();
