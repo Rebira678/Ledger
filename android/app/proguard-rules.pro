@@ -2,3 +2,4 @@
 -keep class app.ledger.client.net.** { *; }
 -keep class kotlin.Metadata { *; }
 -dontwarn org.jetbrains.annotations.**
+-dontwarn com.google.errorprone.annotations.**
