@@ -235,7 +235,7 @@ func (s *Server) handleForgotPassword(w http.ResponseWriter, r *http.Request) {
 			httpx.WriteError(w, httpx.MapDomainError(err))
 			return
 		}
-		
+
 		if s.Mailer != nil {
 			if err := s.Mailer.SendPasswordReset(user.Email, rawCode); err != nil {
 				// Don't fail the request if email fails, but log it (in a real app)
