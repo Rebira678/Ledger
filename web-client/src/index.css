@@ -334,13 +334,13 @@ button.secondary:hover {
   white-space: nowrap;
 }
 
-.segmented-btn:hover {
+button.segmented-btn:hover {
   color: #ffffff;
-  background: transparent;
+  background: transparent !important;
 }
 
-.segmented-btn.active {
-  background: rgba(255, 255, 255, 0.08);
+button.segmented-btn.active {
+  background: rgba(255, 255, 255, 0.08) !important;
   color: #ffffff;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
 }
