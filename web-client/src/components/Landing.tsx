@@ -220,6 +220,17 @@ export function Landing() {
               <h4 className="step-title">3. 100% Secure & Read-Only</h4>
               <p className="step-desc">Ledger is completely secure. It does not touch your money and cannot make transfers. It is strictly a read-only tool designed only to extract and track your transaction history.</p>
            </div>
+           
+           <div className="pipeline-connector">
+              <div className="connector-line"></div>
+              <div className="connector-dot"></div>
+           </div>
+
+           <div className="pipeline-step">
+              <div className="step-icon-wrapper"><LayoutDashboard size={32} /></div>
+              <h4 className="step-title">4. Sync Anywhere</h4>
+              <p className="step-desc">Once you grant permission, the app works in the background. You can log into the web dashboard using the exact same account to securely view and manage your expenses from anywhere.</p>
+           </div>
         </div>
       </section>
 
