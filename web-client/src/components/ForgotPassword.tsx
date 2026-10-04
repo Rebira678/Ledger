@@ -50,7 +50,7 @@ export function ForgotPassword() {
 
         <div className="auth-header">
           <h1>Reset your password</h1>
-          <p>Enter your email to receive a password reset link.</p>
+          <p>Enter your email to receive a temporary password code.</p>
         </div>
         
         {error && (
@@ -61,11 +61,10 @@ export function ForgotPassword() {
 
         {success ? (
           <div style={{ textAlign: 'center', marginBottom: '24px' }}>
-            <p style={{ color: 'var(--status-success)', marginBottom: '16px' }}>Check your email for your temporary password code.</p>
+            <p style={{ color: 'var(--status-success)', marginBottom: '16px' }}>Your temporary code is ready!</p>
             {demoCode && (
               <div style={{ padding: '16px', background: 'var(--bg-card)', borderRadius: '8px', border: '1px solid var(--border)', marginBottom: '16px' }}>
-                <p style={{ fontSize: '12px', color: 'var(--text-secondary)', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Developer Demo Mode</p>
-                <p style={{ fontSize: '14px', color: 'var(--text-primary)', marginBottom: '12px' }}>Because Render's free tier blocks outgoing emails, here is the secure code that would normally be emailed to you:</p>
+                <p style={{ fontSize: '12px', color: 'var(--text-secondary)', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Temporary Code</p>
                 <div style={{ fontSize: '24px', fontWeight: 'bold', letterSpacing: '0.2em', color: 'var(--brand-primary)', fontFamily: 'monospace' }}>
                   {demoCode}
                 </div>
@@ -89,7 +88,7 @@ export function ForgotPassword() {
             </div>
 
             <button type="submit" disabled={loading}>
-              {loading ? 'Sending link...' : 'Send reset link'}
+              {loading ? 'Requesting...' : 'Get Code'}
             </button>
           </form>
         )}

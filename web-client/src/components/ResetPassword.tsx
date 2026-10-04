@@ -35,7 +35,7 @@ export function ResetPassword() {
         if (errorMsg.includes('must be at least 8')) {
           errorMsg = "Your password must be at least 8 characters long.";
         } else if (errorMsg.includes('invalid or expired')) {
-          errorMsg = "This reset link has expired or is invalid. Please request a new one.";
+          errorMsg = "This temporary code has expired or is invalid. Please request a new one.";
         }
         throw new Error(errorMsg);
       }
