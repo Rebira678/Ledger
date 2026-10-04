@@ -335,8 +335,8 @@ button.secondary:hover {
 }
 
 .segmented-btn:hover {
-  color: var(--text-primary);
-  background: rgba(255, 255, 255, 0.03);
+  color: #ffffff;
+  background: transparent;
 }
 
 .segmented-btn.active {
