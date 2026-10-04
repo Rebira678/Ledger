@@ -444,10 +444,38 @@ func (s *Server) handleIngestSMS(w http.ResponseWriter, r *http.Request) {
 func (s *Server) handleListTxns(w http.ResponseWriter, r *http.Request) {
 	q := r.URL.Query()
 	limit := clampLimit(q.Get("limit"))
+	from := q.Get("from")
+	to := q.Get("to")
+
+	if period := q.Get("period"); period != "" {
+		now := s.Now()
+		var pFrom, pTo time.Time
+		switch period {
+		case "last_week":
+			pTo = domain.WeekStart(now)
+			pFrom = pTo.AddDate(0, 0, -7)
+		case "this_month":
+			pFrom = time.Date(now.Year(), now.Month(), 1, 0, 0, 0, 0, now.Location())
+			pTo = pFrom.AddDate(0, 1, 0)
+		case "last_month":
+			pTo = time.Date(now.Year(), now.Month(), 1, 0, 0, 0, 0, now.Location())
+			pFrom = pTo.AddDate(0, -1, 0)
+		case "all":
+			// Leave from/to empty to fetch all
+		default: // "this_week"
+			pFrom = domain.WeekStart(now)
+			pTo = pFrom.AddDate(0, 0, 7)
+		}
+		if period != "all" {
+			from = pFrom.Format("2006-01-02T15:04:05Z")
+			to = pTo.Format("2006-01-02T15:04:05Z")
+		}
+	}
+
 	f := repo.TxnListFilter{
 		UserID:   MustUserID(r.Context()),
-		From:     q.Get("from"),
-		To:       q.Get("to"),
+		From:     from,
+		To:       to,
 		Category: q.Get("category"),
 		Limit:    limit,
 		Cursor:   q.Get("cursor"),

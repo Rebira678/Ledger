@@ -311,6 +311,40 @@ button.secondary:hover {
   background: var(--bg-surface-hover);
 }
 
+.segmented-control {
+  display: flex;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  padding: 4px;
+  border-radius: 8px;
+  gap: 4px;
+  width: max-content;
+}
+
+.segmented-btn {
+  background: transparent;
+  color: var(--text-muted);
+  border: none;
+  padding: 6px 14px;
+  font-size: 0.8rem;
+  font-weight: 500;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.segmented-btn:hover {
+  color: var(--text-primary);
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.segmented-btn.active {
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--text-primary);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+}
+
 .badge {
   display: inline-flex;
   align-items: center;

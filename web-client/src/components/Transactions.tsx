@@ -1,9 +1,10 @@
-import { Search, Filter } from 'lucide-react';
+import { Search } from 'lucide-react';
 import { useState, useEffect } from 'react';
 
 export function Transactions() {
   const [txns, setTxns] = useState<any[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
+  const [period, setPeriod] = useState('all');
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
   const [, setIsLoading] = useState(true);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -19,7 +20,7 @@ export function Transactions() {
   useEffect(() => {
     async function fetchTxns() {
       try {
-        const res = await fetch('/v1/transactions', {
+        const res = await fetch(`/v1/transactions?period=${period}`, {
           headers: {
             'Authorization': `Bearer ${localStorage.getItem('token')}`
           }
@@ -43,7 +44,7 @@ export function Transactions() {
       }
     }
     fetchTxns();
-  }, []);
+  }, [period]);
 
   const handleCategoryChange = async (id: string, newCategory: string) => {
     try {
@@ -72,8 +73,15 @@ export function Transactions() {
           <h2 className="reveal-text" style={{ fontSize: '2.5rem' }}>Transactions</h2>
         </div>
         
-        <div style={{ display: 'flex', gap: '16px', flex: isMobile ? 1 : 'none' }}>
-          <div style={{ position: 'relative', flex: 1 }}>
+        <div style={{ display: 'flex', gap: '16px', flex: isMobile ? 1 : 'none', flexWrap: 'wrap' }}>
+          <div className="segmented-control" style={{ overflowX: 'auto' }}>
+            <button className={`segmented-btn ${period === 'all' ? 'active' : ''}`} onClick={() => setPeriod('all')}>All Time</button>
+            <button className={`segmented-btn ${period === 'this_week' ? 'active' : ''}`} onClick={() => setPeriod('this_week')}>This Wk</button>
+            <button className={`segmented-btn ${period === 'last_week' ? 'active' : ''}`} onClick={() => setPeriod('last_week')}>Last Wk</button>
+            <button className={`segmented-btn ${period === 'this_month' ? 'active' : ''}`} onClick={() => setPeriod('this_month')}>This Mo</button>
+            <button className={`segmented-btn ${period === 'last_month' ? 'active' : ''}`} onClick={() => setPeriod('last_month')}>Last Mo</button>
+          </div>
+          <div style={{ position: 'relative', flex: 1, minWidth: '200px' }}>
             <Search size={18} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
             <input 
               placeholder="Search counterparty..." 
@@ -82,9 +90,6 @@ export function Transactions() {
               style={{ paddingLeft: '40px' }} 
             />
           </div>
-          <button className="secondary">
-            <Filter size={16} /> Filter
-          </button>
         </div>
       </div>
 

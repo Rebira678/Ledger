@@ -71,27 +71,14 @@ export function Dashboard() {
         </div>
       )}
 
-      <div className="section-header" style={{ textAlign: 'left', margin: '0 0 32px 0', padding: 0, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+      <div className="section-header" style={{ textAlign: 'left', margin: '0 0 32px 0', padding: 0, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px' }}>
         <h2 className="reveal-text" style={{ fontSize: '2.5rem', margin: 0 }}>Overview</h2>
-        <select 
-          value={period} 
-          onChange={(e) => setPeriod(e.target.value)}
-          style={{
-            background: 'var(--bg-card)',
-            color: 'var(--text-primary)',
-            border: '1px solid var(--border)',
-            padding: '8px 16px',
-            borderRadius: '8px',
-            fontSize: '0.875rem',
-            outline: 'none',
-            cursor: 'pointer'
-          }}
-        >
-          <option value="this_week">This Week</option>
-          <option value="last_week">Last Week</option>
-          <option value="this_month">This Month</option>
-          <option value="last_month">Last Month</option>
-        </select>
+        <div className="segmented-control">
+          <button className={`segmented-btn ${period === 'this_week' ? 'active' : ''}`} onClick={() => setPeriod('this_week')}>This Week</button>
+          <button className={`segmented-btn ${period === 'last_week' ? 'active' : ''}`} onClick={() => setPeriod('last_week')}>Last Week</button>
+          <button className={`segmented-btn ${period === 'this_month' ? 'active' : ''}`} onClick={() => setPeriod('this_month')}>This Month</button>
+          <button className={`segmented-btn ${period === 'last_month' ? 'active' : ''}`} onClick={() => setPeriod('last_month')}>Last Month</button>
+        </div>
       </div>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '24px', marginBottom: '40px' }}>
         
