@@ -45,7 +45,7 @@ export function Upload() {
         } else if (serverError.includes('llm:') || serverError.includes('status 401') || serverError.includes('API key')) {
           serverError = 'Our automated receipt processing service is currently unavailable. Please try again later.';
         } else {
-          serverError = 'An unexpected error occurred while processing your file. Please try again.';
+          serverError = "We ran into a little hiccup while processing your file. Please give it another try.";
         }
         
         throw new Error(serverError);
@@ -55,7 +55,7 @@ export function Upload() {
       setFile(null);
     } catch (err: any) {
       setStatus('error');
-      setErrorMsg(err.message || 'An unexpected error occurred');
+      setErrorMsg(err.message || "Oops! Something went wrong. Please give it another try.");
     } finally {
       setIsUploading(false);
     }
