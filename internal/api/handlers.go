@@ -146,6 +146,7 @@ func (s *Server) issueTokens(w http.ResponseWriter, r *http.Request, userID stri
 		return
 	}
 	writeJSON(w, status, map[string]any{
+		"user_id":       userID,
 		"access_token":  access,
 		"refresh_token": refresh,
 		"expires_in":    expiresIn,
