@@ -50,6 +50,7 @@ func wrap(op string, err error) error {
 
 // Repo aggregates all repositories over one DB handle.
 type Repo struct {
+	db       DB
 	Users    *UserRepo
 	Devices  *DeviceRepo
 	Tokens   *TokenRepo
@@ -61,9 +62,79 @@ type Repo struct {
 	Reports  *ReportRepo
 }
 
+// TxBeginner is optionally implemented by DB drivers (like *sql.DB) that support beginning transactions.
+type TxBeginner interface {
+	BeginTx(ctx context.Context, opts *sql.TxOptions) (*sql.Tx, error)
+}
+
+// DBHandle returns the underlying DB handle.
+func (r *Repo) DBHandle() DB {
+	return r.db
+}
+
+// WithTx executes fn inside an atomic database transaction.
+// If fn returns an error or panics, the transaction is safely rolled back.
+// If the underlying database handle does not support transactions,
+// fn is executed directly with r.
+func (r *Repo) WithTx(ctx context.Context, fn func(txRepo *Repo) error) error {
+	if txer, ok := r.db.(TxBeginner); ok {
+		tx, err := txer.BeginTx(ctx, nil)
+		if err != nil {
+			return wrap("beginning transaction", err)
+		}
+		txRepo := New(tx)
+		panicked := true
+		defer func() {
+			if panicked {
+				_ = tx.Rollback()
+			}
+		}()
+		if err := fn(txRepo); err != nil {
+			panicked = false
+			_ = tx.Rollback()
+			return err
+		}
+		panicked = false
+		if err := tx.Commit(); err != nil {
+			return wrap("committing transaction", err)
+		}
+		return nil
+	}
+
+	// CustomTxStarter allows unit test mocks to mock transaction boundaries.
+	if starter, ok := r.db.(interface {
+		BeginCustomTx(ctx context.Context) (DB, func() error, func() error, error)
+	}); ok {
+		txDB, commit, rollback, err := starter.BeginCustomTx(ctx)
+		if err != nil {
+			return wrap("beginning transaction", err)
+		}
+		txRepo := New(txDB)
+		panicked := true
+		defer func() {
+			if panicked {
+				_ = rollback()
+			}
+		}()
+		if err := fn(txRepo); err != nil {
+			panicked = false
+			_ = rollback()
+			return err
+		}
+		panicked = false
+		if err := commit(); err != nil {
+			return wrap("committing transaction", err)
+		}
+		return nil
+	}
+
+	return fn(r)
+}
+
 // New builds the aggregate repository.
 func New(db DB) *Repo {
 	return &Repo{
+		db:       db,
 		Users:    &UserRepo{db: db},
 		Devices:  &DeviceRepo{db: db},
 		Tokens:   &TokenRepo{db: db},

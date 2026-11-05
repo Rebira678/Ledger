@@ -34,6 +34,11 @@ func TestMain(m *testing.M) {
 		if dsn == "" {
 			dsn = containerDSN(context.Background())
 		}
+		if dsn == "" {
+			fmt.Fprintln(os.Stderr, "skipping Postgres integration tests (no Docker / LEDGER_TEST_DATABASE_URL)")
+			code = m.Run()
+			return
+		}
 		db, err := sql.Open("pgx", dsn)
 		if err != nil {
 			fmt.Fprintln(os.Stderr, err)
@@ -51,7 +56,7 @@ func containerDSN(ctx context.Context) string {
 	c, err := startContainer(ctx, req)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
-		os.Exit(2)
+		return ""
 	}
 	return c
 }
@@ -225,6 +230,28 @@ func TestIntegration_RegisterLoginPairIngest(t *testing.T) {
 	_ = testDB.QueryRow(`SELECT count(*) FROM raw_messages WHERE client_message_id='c8f1e2a0'`).Scan(&n)
 	if n != 1 {
 		t.Fatalf("expected 1 raw message, got %d", n)
+	}
+
+	// Retry of a previously failed raw message must re-process and succeed (Issue #1 fix)
+	failedMsgID := "failed-msg-123"
+	_, err := testDB.Exec(`INSERT INTO raw_messages
+		(id, user_id, device_id, client_message_id, sender_id, body, received_at, status)
+		VALUES ('msg_f1', $1, (SELECT id FROM devices WHERE user_id=$1 LIMIT 1), $2, 'CBE', 'bad body', now(), 'failed')`,
+		userID, failedMsgID)
+	if err != nil {
+		t.Fatalf("seeding failed message: %v", err)
+	}
+
+	retryBody := map[string]string{
+		"sender_id": "CBE", "body": "CBE: You have received 250.00 ETB from DANIEL on 14/09/2026 07:41. Ref: TXN999. Balance: 5,070.50 ETB",
+		"received_at": "2026-09-14T07:41:00Z", "client_message_id": failedMsgID,
+	}
+	resp, retryRes := postJSON(t, ts.URL+"/v1/ingest/sms", ingestHdr, retryBody)
+	if resp.StatusCode != http.StatusCreated {
+		t.Fatalf("retry of failed message should succeed with 201 Created, got %d: %v", resp.StatusCode, retryRes)
+	}
+	if retryRes["status"] != "parsed" || retryRes["transaction_id"] == nil || retryRes["transaction_id"] == "" {
+		t.Fatalf("expected parsed outcome for healed message, got %v", retryRes)
 	}
 
 	// Malformed payload → 422.

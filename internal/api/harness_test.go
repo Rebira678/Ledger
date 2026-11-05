@@ -40,18 +40,18 @@ func containerDSN2(ctx context.Context) string {
 		ContainerRequest: req, Started: true,
 	})
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "starting postgres container: %v\n", err)
-		os.Exit(2)
+		fmt.Fprintf(os.Stderr, "postgres container not available: %v\n", err)
+		return ""
 	}
 	host, err := c.Host(ctx)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
-		os.Exit(2)
+		return ""
 	}
 	port, err := c.MappedPort(ctx, "5432/tcp")
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
-		os.Exit(2)
+		return ""
 	}
 	return fmt.Sprintf("postgres://ledger:ledger@%s:%s/ledger_test?sslmode=disable", host, port.Port())
 }
@@ -62,6 +62,9 @@ func testcontainersRequest() any { return nil }
 
 func dropAll(t *testing.T) {
 	t.Helper()
+	if testDB == nil {
+		t.Skip("Postgres not available (Docker not running and LEDGER_TEST_DATABASE_URL not set)")
+	}
 	// Wait for Postgres to accept connections (container startup race).
 	for i := 0; i < 60; i++ {
 		if err := testDB.Ping(); err == nil {

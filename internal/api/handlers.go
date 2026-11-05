@@ -359,22 +359,7 @@ func (s *Server) handleIngestSMS(w http.ResponseWriter, r *http.Request) {
 	}
 	ident, _ := IdentityFrom(r.Context())
 
-	raw := &domain.RawMessage{
-		ID: domain.MustNewID("msg"), UserID: ident.UserID, DeviceID: ident.DeviceID,
-		ClientMessageID: req.ClientMessageID, SenderID: req.SenderID, Body: req.Body,
-		ReceivedAt: receivedAt, Status: "parsed",
-	}
-	res, err := s.Repo.Messages.InsertRawMessage(r.Context(), raw)
-	if err != nil {
-		httpx.WriteError(w, httpx.MapDomainError(err))
-		return
-	}
-	if !res.Created {
-		// Idempotent no-op: duplicate client_message_id (contract §3).
-		httpx.Envelope(w, http.StatusConflict, "DUPLICATE", "client_message_id already ingested", "client_message_id")
-		return
-	}
-
+	// Parse in memory first — zero database locks held during parsing or AI fallback.
 	parsed, perr := s.Parser.ParseSender(req.SenderID, req.Body, receivedAt)
 	if perr != nil {
 		if errors.Is(perr, parsers.ErrUnmatchedFormat) && s.ParseSMSFallback != nil {
@@ -388,7 +373,21 @@ func (s *Server) handleIngestSMS(w http.ResponseWriter, r *http.Request) {
 
 		if perr != nil {
 			// Route unmatched messages to the review queue, never fail silently (FR-3.3).
+			raw := &domain.RawMessage{
+				ID: domain.MustNewID("msg"), UserID: ident.UserID, DeviceID: ident.DeviceID,
+				ClientMessageID: req.ClientMessageID, SenderID: req.SenderID, Body: req.Body,
+				ReceivedAt: receivedAt, Status: "queued_for_review",
+			}
 			if errors.Is(perr, parsers.ErrUnmatchedFormat) {
+				res, ierr := s.Repo.Messages.InsertRawMessage(r.Context(), raw)
+				if ierr != nil {
+					httpx.WriteError(w, httpx.MapDomainError(ierr))
+					return
+				}
+				if !res.Created {
+					httpx.Envelope(w, http.StatusConflict, "DUPLICATE", "client_message_id already ingested", "client_message_id")
+					return
+				}
 				if qerr := s.Repo.Messages.SetRawMessageOutcome(r.Context(), raw.ID, "queued_for_review", "", "no parser matched sender/format"); qerr != nil {
 					httpx.WriteError(w, httpx.MapDomainError(qerr))
 					return
@@ -398,9 +397,10 @@ func (s *Server) handleIngestSMS(w http.ResponseWriter, r *http.Request) {
 				})
 				return
 			}
-			if serr := s.Repo.Messages.SetRawMessageOutcome(r.Context(), raw.ID, "failed", "", perr.Error()); serr != nil {
-				httpx.WriteError(w, httpx.MapDomainError(serr))
-				return
+			raw.Status = "failed"
+			res, ierr := s.Repo.Messages.InsertRawMessage(r.Context(), raw)
+			if ierr == nil && res.Created {
+				_ = s.Repo.Messages.SetRawMessageOutcome(r.Context(), raw.ID, "failed", "", perr.Error())
 			}
 			httpx.WriteError(w, httpx.NewAPIErrorf(http.StatusUnprocessableEntity, "VALIDATION_ERROR", "body", "parsing sms: %v", perr))
 			return
@@ -418,18 +418,54 @@ func (s *Server) handleIngestSMS(w http.ResponseWriter, r *http.Request) {
 		s.CategorizeAndQueue(r, txn)
 	}
 
-	if err := s.Repo.Txns.InsertTxn(r.Context(), nil, txn); err != nil {
-		httpx.WriteError(w, httpx.MapDomainError(err))
+	// Persist raw message and transaction atomically within a single DB transaction.
+	// Prevents orphan raw messages from causing false 409 DUPLICATE errors on retry
+	// if transaction insertion encounters a transient error.
+	var isDuplicate bool
+	txErr := s.Repo.WithTx(r.Context(), func(txRepo *repo.Repo) error {
+		raw := &domain.RawMessage{
+			ID: domain.MustNewID("msg"), UserID: ident.UserID, DeviceID: ident.DeviceID,
+			ClientMessageID: req.ClientMessageID, SenderID: req.SenderID, Body: req.Body,
+			ReceivedAt: receivedAt, Status: "parsed",
+		}
+		res, err := txRepo.Messages.InsertRawMessage(r.Context(), raw)
+		if err != nil {
+			return err
+		}
+		if !res.Created {
+			// Idempotent duplicate: already successfully parsed with transaction, or queued for review.
+			if res.ExistingStatus != "failed" && (res.ExistingTxnID != "" || res.ExistingStatus == "queued_for_review") {
+				isDuplicate = true
+				return nil
+			}
+			// Retry of previously failed or incomplete message: re-use existing raw message id.
+			raw.ID = res.ID
+		}
+
+		if err := txRepo.Txns.InsertTxn(r.Context(), nil, txn); err != nil {
+			return err
+		}
+
+		if err := txRepo.Messages.SetRawMessageOutcome(r.Context(), raw.ID, "parsed", txn.ID, ""); err != nil {
+			return err
+		}
+		return nil
+	})
+
+	if txErr != nil {
+		httpx.WriteError(w, httpx.MapDomainError(txErr))
 		return
 	}
+	if isDuplicate {
+		httpx.Envelope(w, http.StatusConflict, "DUPLICATE", "client_message_id already ingested", "client_message_id")
+		return
+	}
+
 	// Clarification queueing (FR-5.1) after the row exists.
 	if s.QueueClarification != nil {
 		s.QueueClarification(r, txn)
 	}
-	if err := s.Repo.Messages.SetRawMessageOutcome(r.Context(), raw.ID, "parsed", txn.ID, ""); err != nil {
-		httpx.WriteError(w, httpx.MapDomainError(err))
-		return
-	}
+
 	writeJSON(w, http.StatusCreated, map[string]any{
 		"transaction_id": txn.ID,
 		"status":         "parsed",

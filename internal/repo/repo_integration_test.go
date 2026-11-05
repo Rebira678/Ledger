@@ -194,3 +194,92 @@ func TestIntegration_StatementUploads(t *testing.T) {
 		t.Fatalf("status update not persisted: %+v", got)
 	}
 }
+
+// TestIntegration_RawMessage_TransientTxnFailure_RollbackAndRetry reproduces and verifies
+// the fix for Issue #1: If transaction insertion encounters a transient failure,
+// the entire operation rolls back so retrying with the same client_message_id succeeds
+// instead of falsely reporting 409 DUPLICATE and losing the transaction.
+func TestIntegration_RawMessage_TransientTxnFailure_RollbackAndRetry(t *testing.T) {
+	freshDB(t)
+	ctx := context.Background()
+	r := repo.New(testDB)
+
+	userID := seedUser(t, "user-retry@example.com")
+	_, err := testDB.Exec(`INSERT INTO devices (id, user_id, device_model, os_version, api_key_hash)
+		VALUES ('dev_retry', $1, 'Pixel 6a', '14', 'hash1')`, userID)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	raw := &domain.RawMessage{
+		ID: "msg_retry_1", UserID: userID, DeviceID: "dev_retry",
+		ClientMessageID: "retry-client-id-001", SenderID: "CBE",
+		Body:       "CBE: You have received 500.00 ETB from ALMAZ on 14/09/2026 07:41. Ref: TX123.",
+		ReceivedAt: time.Now().UTC(), Status: "parsed",
+	}
+
+	// 1. Simulate failure during transaction insertion within WithTx
+	expectedErr := errors.New("simulated transient failure on insert txn")
+	txErr := r.WithTx(ctx, func(txRepo *repo.Repo) error {
+		res, err := txRepo.Messages.InsertRawMessage(ctx, raw)
+		if err != nil {
+			return err
+		}
+		if !res.Created {
+			t.Fatal("expected raw message to be created")
+		}
+		// Return transient error (simulating InsertTxn failure)
+		return expectedErr
+	})
+	if !errors.Is(txErr, expectedErr) {
+		t.Fatalf("expected txErr to be %v, got %v", expectedErr, txErr)
+	}
+
+	// 2. Verify that rollback happened: raw message was NOT persisted
+	var count int
+	if err := testDB.QueryRow(`SELECT count(*) FROM raw_messages WHERE client_message_id = 'retry-client-id-001'`).Scan(&count); err != nil {
+		t.Fatal(err)
+	}
+	if count != 0 {
+		t.Fatalf("expected 0 raw messages after rollback, got %d", count)
+	}
+
+	// 3. Retry with the SAME client_message_id: must succeed and NOT return DUPLICATE!
+	retryErr := r.WithTx(ctx, func(txRepo *repo.Repo) error {
+		res, err := txRepo.Messages.InsertRawMessage(ctx, raw)
+		if err != nil {
+			return err
+		}
+		if !res.Created {
+			t.Fatal("retry MUST have Created=true because previous failed attempt was rolled back!")
+		}
+		txn := &domain.Transaction{
+			ID: "txn_retry_1", UserID: userID, DeviceID: "dev_retry",
+			Amount: domain.Money{Units: 500, Cents: 0}, Currency: "ETB", Direction: domain.DirectionCredit,
+			Counterparty: "ALMAZ", Source: domain.SourceSMS, OcurredAt: time.Now().UTC(),
+		}
+		if err := txRepo.Txns.InsertTxn(ctx, nil, txn); err != nil {
+			return err
+		}
+		return txRepo.Messages.SetRawMessageOutcome(ctx, raw.ID, "parsed", txn.ID, "")
+	})
+	if retryErr != nil {
+		t.Fatalf("retry failed: %v", retryErr)
+	}
+
+	// 4. Verify both the raw message and transaction are committed together!
+	if err := testDB.QueryRow(`SELECT count(*) FROM raw_messages WHERE client_message_id = 'retry-client-id-001'`).Scan(&count); err != nil {
+		t.Fatal(err)
+	}
+	if count != 1 {
+		t.Fatalf("expected 1 raw message after retry, got %d", count)
+	}
+
+	var savedTxnID string
+	if err := testDB.QueryRow(`SELECT transaction_id FROM raw_messages WHERE client_message_id = 'retry-client-id-001'`).Scan(&savedTxnID); err != nil {
+		t.Fatal(err)
+	}
+	if savedTxnID != "txn_retry_1" {
+		t.Fatalf("expected transaction_id txn_retry_1, got %s", savedTxnID)
+	}
+}
