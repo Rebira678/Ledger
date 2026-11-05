@@ -499,8 +499,8 @@ func TestIntegration_IngestSMS_RetryFailedMessageHealsRecord(t *testing.T) {
 	access := reg["access_token"].(string)
 	authHdr := map[string]string{"Authorization": "Bearer " + access}
 
-	// 2. Register device
-	resp, dev := postJSON(t, ts.URL+"/v1/devices", authHdr, map[string]string{
+	// 2. Register device via pair endpoint
+	resp, dev := postJSON(t, ts.URL+"/v1/devices/pair", authHdr, map[string]string{
 		"device_model": "Pixel 7", "os_version": "14",
 	})
 	if resp.StatusCode != http.StatusCreated {
