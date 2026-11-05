@@ -256,7 +256,7 @@ func TestIntegration_RawMessage_TransientTxnFailure_RollbackAndRetry(t *testing.
 		txn := &domain.Transaction{
 			ID: "txn_retry_1", UserID: userID, DeviceID: "dev_retry",
 			Amount: domain.Money{Units: 500, Cents: 0}, Currency: "ETB", Direction: domain.DirectionCredit,
-			Counterparty: "ALMAZ", Source: domain.SourceSMS, OcurredAt: time.Now().UTC(),
+			Counterparty: "ALMAZ", CategorySource: "system", Source: domain.SourceSMS, OcurredAt: time.Now().UTC(),
 		}
 		if err := txRepo.Txns.InsertTxn(ctx, nil, txn); err != nil {
 			return err

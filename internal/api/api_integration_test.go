@@ -232,28 +232,6 @@ func TestIntegration_RegisterLoginPairIngest(t *testing.T) {
 		t.Fatalf("expected 1 raw message, got %d", n)
 	}
 
-	// Retry of a previously failed raw message must re-process and succeed (Issue #1 fix)
-	failedMsgID := "failed-msg-123"
-	_, err := testDB.Exec(`INSERT INTO raw_messages
-		(id, user_id, device_id, client_message_id, sender_id, body, received_at, status)
-		VALUES ('msg_f1', $1, (SELECT id FROM devices WHERE user_id=$1 LIMIT 1), $2, 'CBE', 'bad body', now(), 'failed')`,
-		userID, failedMsgID)
-	if err != nil {
-		t.Fatalf("seeding failed message: %v", err)
-	}
-
-	retryBody := map[string]string{
-		"sender_id": "CBE", "body": "CBE: You have received 250.00 ETB from DANIEL on 14/09/2026 07:41. Ref: TXN999. Balance: 5,070.50 ETB",
-		"received_at": "2026-09-14T07:41:00Z", "client_message_id": failedMsgID,
-	}
-	resp, retryRes := postJSON(t, ts.URL+"/v1/ingest/sms", ingestHdr, retryBody)
-	if resp.StatusCode != http.StatusCreated {
-		t.Fatalf("retry of failed message should succeed with 201 Created, got %d: %v", resp.StatusCode, retryRes)
-	}
-	if retryRes["status"] != "parsed" || retryRes["transaction_id"] == nil || retryRes["transaction_id"] == "" {
-		t.Fatalf("expected parsed outcome for healed message, got %v", retryRes)
-	}
-
 	// Malformed payload → 422.
 	resp, bad := postJSON(t, ts.URL+"/v1/ingest/sms", ingestHdr, map[string]string{
 		"sender_id": "CBE", "body": "x", "received_at": "not-a-time", "client_message_id": "z1",
@@ -501,6 +479,76 @@ func contentTypeFor(name string) string {
 		return "application/pdf"
 	default:
 		return "text/plain"
+	}
+}
+
+// TestIntegration_IngestSMS_RetryFailedMessageHealsRecord verifies that retrying
+// an SMS whose raw message was previously marked as "failed" will re-run parsing,
+// create the transaction, and heal the record instead of returning 409 DUPLICATE.
+func TestIntegration_IngestSMS_RetryFailedMessageHealsRecord(t *testing.T) {
+	ts, _ := newTestServer(t)
+	defer ts.Close()
+
+	// 1. Register user
+	resp, reg := postJSON(t, ts.URL+"/v1/auth/register", nil, map[string]string{
+		"email": "retry-user@example.com", "password": "password123",
+	})
+	if resp.StatusCode != http.StatusCreated {
+		t.Fatalf("register status %d: %v", resp.StatusCode, reg)
+	}
+	access := reg["access_token"].(string)
+	authHdr := map[string]string{"Authorization": "Bearer " + access}
+
+	// 2. Register device
+	resp, dev := postJSON(t, ts.URL+"/v1/devices", authHdr, map[string]string{
+		"device_model": "Pixel 7", "os_version": "14",
+	})
+	if resp.StatusCode != http.StatusCreated {
+		t.Fatalf("register device status %d: %v", resp.StatusCode, dev)
+	}
+	deviceKey := dev["device_api_key"].(string)
+	ingestHdr := map[string]string{
+		"Authorization": "Bearer " + access,
+		"X-Device-Key":  deviceKey,
+	}
+
+	// 3. Seed an existing raw_message with status = 'failed'
+	failedMsgID := "failed-msg-heal-1"
+	var userID string
+	if err := testDB.QueryRow(`SELECT id FROM users WHERE email = 'retry-user@example.com'`).Scan(&userID); err != nil {
+		t.Fatal(err)
+	}
+	_, err := testDB.Exec(`INSERT INTO raw_messages
+		(id, user_id, device_id, client_message_id, sender_id, body, received_at, status)
+		VALUES ('msg_f1', $1, (SELECT id FROM devices WHERE user_id=$1 LIMIT 1), $2, 'CBE', 'bad body', now(), 'failed')`,
+		userID, failedMsgID)
+	if err != nil {
+		t.Fatalf("seeding failed message: %v", err)
+	}
+
+	// 4. Retry with valid SMS body and the SAME client_message_id
+	retryBody := map[string]string{
+		"sender_id":         "CBE",
+		"body":              "CBE: You have received 250.00 ETB from DANIEL on 14/09/2026 07:41. Ref: TXN999. Balance: 5,070.50 ETB",
+		"received_at":       "2026-09-14T07:41:00Z",
+		"client_message_id": failedMsgID,
+	}
+	resp, retryRes := postJSON(t, ts.URL+"/v1/ingest/sms", ingestHdr, retryBody)
+	if resp.StatusCode != http.StatusCreated {
+		t.Fatalf("retry of failed message should succeed with 201 Created, got %d: %v", resp.StatusCode, retryRes)
+	}
+	txnID, _ := retryRes["transaction_id"].(string)
+	if retryRes["status"] != "parsed" || txnID == "" {
+		t.Fatalf("expected parsed outcome for healed message, got %v", retryRes)
+	}
+
+	// 5. Verify the raw message in DB has status 'parsed' and links to the transaction
+	var updatedStatus, updatedTxnID string
+	if err := testDB.QueryRow(`SELECT status, transaction_id FROM raw_messages WHERE client_message_id = $1`, failedMsgID).Scan(&updatedStatus, &updatedTxnID); err != nil {
+		t.Fatal(err)
+	}
+	if updatedStatus != "parsed" || updatedTxnID != txnID {
+		t.Fatalf("expected raw message status 'parsed' and txn %s, got status %s and txn %s", txnID, updatedStatus, updatedTxnID)
 	}
 }
 

@@ -38,7 +38,7 @@ func (r *TxnRepo) InsertTxn(ctx context.Context, db DB, t *domain.Transaction) e
 		`INSERT INTO transactions
 		 (id, user_id, device_id, amount, currency, direction, counterparty,
 		  category, category_confidence, category_source, source, occurred_at, balance)
-		 VALUES ($1,$2,NULLIF($3,''),$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)
+		 VALUES ($1,$2,NULLIF($3,''),$4,$5,$6,$7,$8,$9,NULLIF($10,''),$11,$12,$13)
 		 RETURNING created_at`,
 		t.ID, t.UserID, t.DeviceID, t.Amount.String(), t.Currency, string(t.Direction),
 		t.Counterparty, t.Category, t.CategoryConfidence, t.CategorySource,
