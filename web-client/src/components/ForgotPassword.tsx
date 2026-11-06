@@ -62,7 +62,9 @@ export function ForgotPassword() {
 
         {success ? (
           <div style={{ textAlign: 'center', marginBottom: '24px' }}>
-            <p style={{ color: 'var(--status-success)', marginBottom: '16px' }}>Your temporary code is ready!</p>
+            <p style={{ color: 'var(--status-success)', marginBottom: '16px' }}>
+              {demoCode ? 'Your temporary code is ready!' : 'If your email is registered, a password reset code has been sent.'}
+            </p>
             {demoCode && (
               <div style={{ padding: '16px', background: 'var(--bg-card)', borderRadius: '8px', border: '1px solid var(--border)', marginBottom: '16px' }}>
                 <p style={{ fontSize: '12px', color: 'var(--text-secondary)', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Temporary Code</p>

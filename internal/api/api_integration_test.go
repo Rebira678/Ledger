@@ -552,4 +552,78 @@ func TestIntegration_IngestSMS_RetryFailedMessageHealsRecord(t *testing.T) {
 	}
 }
 
+// TestIntegration_ForgotPassword_Security verifies that debug_token is NEVER leaked
+// in production, and responses for existing and non-existing emails are identical
+// to prevent user enumeration and account takeover.
+func TestIntegration_ForgotPassword_Security(t *testing.T) {
+	ts, srv := newTestServer(t)
+
+	// Register a test user
+	email := "security-test@example.com"
+	resp, reg := postJSON(t, ts.URL+"/v1/auth/register", nil, map[string]string{
+		"email": email, "password": "OriginalPassword123!",
+	})
+	if resp.StatusCode != http.StatusCreated {
+		t.Fatalf("register status %d: %v", resp.StatusCode, reg)
+	}
+
+	// 1. In PRODUCTION: debug_token must NEVER be returned, and responses must be identical
+	srv.Env = "production"
+
+	// Request forgot password for existing user
+	resp, prodExisting := postJSON(t, ts.URL+"/v1/auth/forgot-password", nil, map[string]string{
+		"email": email,
+	})
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("expected 200 OK, got %d", resp.StatusCode)
+	}
+	if _, ok := prodExisting["debug_token"]; ok {
+		t.Fatalf("SECURITY VIOLATION: debug_token must NEVER be returned in production! Got %v", prodExisting)
+	}
+
+	// Request forgot password for non-existing user
+	resp, prodNonExisting := postJSON(t, ts.URL+"/v1/auth/forgot-password", nil, map[string]string{
+		"email": "does-not-exist@example.com",
+	})
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("expected 200 OK, got %d", resp.StatusCode)
+	}
+	if _, ok := prodNonExisting["debug_token"]; ok {
+		t.Fatalf("SECURITY VIOLATION: debug_token returned for non-existing user: %v", prodNonExisting)
+	}
+	// Verify responses are identical (preventing email enumeration)
+	if prodExisting["message"] != prodNonExisting["message"] {
+		t.Fatalf("enumeration leak: responses differ between existing (%v) and non-existing (%v)", prodExisting, prodNonExisting)
+	}
+
+	// 2. In DEVELOPMENT: debug_token is allowed for offline developer convenience
+	srv.Env = "development"
+	resp, devRes := postJSON(t, ts.URL+"/v1/auth/forgot-password", nil, map[string]string{
+		"email": email,
+	})
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("expected 200 OK, got %d", resp.StatusCode)
+	}
+	token, ok := devRes["debug_token"].(string)
+	if !ok || token == "" {
+		t.Fatalf("expected debug_token in development mode, got %v", devRes)
+	}
+
+	// Verify the token can actually reset the password
+	resp, resetRes := postJSON(t, ts.URL+"/v1/auth/reset-password", nil, map[string]string{
+		"token": token, "password": "NewSecretPassword456!",
+	})
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("reset password failed with code %d: %v", resp.StatusCode, resetRes)
+	}
+
+	// Verify login with new password works
+	resp, loginRes := postJSON(t, ts.URL+"/v1/auth/login", nil, map[string]string{
+		"email": email, "password": "NewSecretPassword456!",
+	})
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("login with new password failed: %v", loginRes)
+	}
+}
+
 var _ = loggerx.New // keep import symmetry with main wiring

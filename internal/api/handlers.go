@@ -242,11 +242,20 @@ func (s *Server) handleForgotPassword(w http.ResponseWriter, r *http.Request) {
 			}(user.Email, rawCode)
 		}
 
-		// Return code in JSON for local dev / portfolio demo since proxies strip custom headers
-		writeJSON(w, http.StatusOK, map[string]any{"debug_token": rawCode})
+		resp := map[string]any{
+			"message": "If this email is registered, a password reset code has been sent.",
+		}
+		// Security: debug_token is ONLY exposed in local development for testing without an SMTP server.
+		// In production, debug_token is strictly omitted to prevent account takeover and email enumeration.
+		if s.Env == "development" {
+			resp["debug_token"] = rawCode
+		}
+		writeJSON(w, http.StatusOK, resp)
 		return
 	}
-	writeJSON(w, http.StatusOK, map[string]any{})
+	writeJSON(w, http.StatusOK, map[string]any{
+		"message": "If this email is registered, a password reset code has been sent.",
+	})
 }
 
 type resetPasswordReq struct {
